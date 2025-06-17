@@ -1,0 +1,22 @@
+{
+  "name": "@lynx-draw/common",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./dist/index.js",
+    "dev": "tsc -b && node ./dist/index.js"
+  },
+  "exports": {
+    "./types": "./src/types.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "zod": "^3.25.57",
+    "@repo/typescript-config": "workspace:*"
+  }
+}

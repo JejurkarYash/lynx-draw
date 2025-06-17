@@ -1,0 +1,15 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+        "dependsOn":["^build"],
+      "outputs": ["./dist/**/*"],
+      "inputs": ["./src/**/*", ".env"],
+      "cache": true
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

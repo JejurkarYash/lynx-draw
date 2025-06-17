@@ -1,0 +1,159 @@
+import express, { Request, Response } from 'express';
+import { Auth } from "./middlewares/middleware.js"
+import dotenv from 'dotenv';
+import cors from "cors";
+import { userSchema, signInSchema } from "@lynx-draw/common/types"
+import prisma from '@repo/db/prismaClient';
+import { ZodError } from 'zod/v4';
+import { JWT_SECRET } from "@repo/backend-common/config";
+import jwt from 'jsonwebtoken';
+import bcrypt from "bcrypt"
+
+dotenv.config();
+const PORT = process.env.PORT
+
+const app = express();
+
+// parsing the request body
+app.use(express.json())
+// allowing the cors 
+app.use(cors())
+
+
+
+// this is the testing endpoint 
+app.get("/", (req: Request, res: Response) => {
+
+    res.json("hello from http server")
+})
+
+
+
+// creating signup endpoint for user signup 
+app.post("/signup", async (req: Request, res: Response) => {
+
+
+    try {
+        const body = req.body
+        // parsing the body with zod schema 
+        const parseBody = userSchema.parse(body);
+
+
+        // hash the password before storing it in db 
+        const hashPassword = await bcrypt.hash(parseBody.password, 10);
+        const user = await prisma.default.user.create({
+            data: {
+                name: parseBody.name,
+                email: parseBody.email,
+                password: hashPassword
+            }
+        })
+
+        res.status(200).json({
+            "message": "User Created Succesfully",
+            "userId": user.id
+        })
+
+    } catch (e: any) {
+
+        if (e instanceof ZodError) {
+            res.status(400).json({
+                "message": "Validation Error ",
+                "error": e.message
+            });
+
+        } else {
+            res.json({
+                message: "User Already Exists ! ",
+                error: e
+            }).status(409);
+        }
+    }
+
+
+})
+
+
+
+
+// creating a signin endpoint for user to signin 
+app.post("/signin", async (req: Request, res: Response) => {
+
+    try {
+        const body = req.body;
+        const parseBody = signInSchema.safeParse(body);
+
+        if (!parseBody.success) {
+            res.status(400).json({
+                "message": "Invalid Inputs"
+            })
+            return
+        }
+
+        const user = await prisma.default.user.findUnique({
+            where: {
+                email: parseBody.data.email,
+            }
+        })
+
+        if (!user) {
+            res.status(403).json({
+                message: "Not Authorized "
+            })
+
+            return
+        }
+
+        const checkPassword = await bcrypt.compare(parseBody.data.password, user.password)
+        if (!checkPassword) {
+            res.status(401).json({
+                "message": "Invalid Credentials "
+            })
+            return;
+        }
+
+        const token = jwt.sign({ email: user.email, userId: user.id }, JWT_SECRET as string)
+        res.status(200).json({
+            message: "Signin Succesfully ",
+            token: token
+        })
+
+
+    } catch (e: any) {
+
+        if (e instanceof ZodError) {
+            res.json({
+                "message": "Invalid Input !",
+                "error": e.message
+            }).status(400)
+            return
+        } else {
+            res.status(500).json({
+                "message": "Something went wrong ! ",
+                error: e
+            })
+        }
+
+
+
+
+    }
+
+})
+app.post("/room", Auth, (req: Request, res: Response) => {
+
+    try {
+        const roomName = req.body.roomName;
+        const userId = req.userInfo?.id;
+
+        
+
+    } catch (e) {
+
+    }
+
+})
+
+app.listen(PORT, () => {
+    console.log("server is running on port ", PORT)
+})
