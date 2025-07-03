@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { number, z } from "zod"
 
 
 
@@ -16,4 +16,9 @@ export const signInSchema = z.object({
 
 export const roomTypes = z.object({
     roomName: z.string()
+})
+
+export const chatTypes = z.object({
+    roomId: z.number(),
+    userId: z.string().optional()
 })

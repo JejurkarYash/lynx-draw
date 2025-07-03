@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { Auth } from "./middlewares/middleware.js"
 import dotenv from 'dotenv';
 import cors from "cors";
-import { userSchema, signInSchema } from "@lynx-draw/common/types"
+import { userSchema, signInSchema, roomTypes, chatTypes } from "@lynx-draw/common/types"
 import prisma from '@repo/db/prismaClient';
 import { ZodError } from 'zod/v4';
 import { JWT_SECRET } from "@repo/backend-common/config";
@@ -140,16 +140,81 @@ app.post("/signin", async (req: Request, res: Response) => {
     }
 
 })
-app.post("/room", Auth, (req: Request, res: Response) => {
-
+app.post("/room", Auth, async (req: Request, res: Response) => {
     try {
-        const roomName = req.body.roomName;
-        const userId = req.userInfo?.id;
 
-        
+        const parseBody = roomTypes.parse(req.body);
+        const userId = req.userId;
+
+        if (!parseBody || !userId) {
+            res.status(400).json({
+                message: "provide room name ",
+            })
+
+            return;
+        }
+
+        const room = await prisma.default.room.create({
+            data: {
+                slug: parseBody.roomName,
+                adminId: userId
+
+            }
+        })
+
+        if (!room) {
+            res.json({
+                message: "somethign went wrong"
+            })
+            return;
+        }
+
+        res.status(200).json({
+            message: "Room Created Succesfully ! ",
+            roomId: room.id,
+            adminId: room.adminId
+        })
+
 
     } catch (e) {
+        res.status(500).json({
+            message: "something went wrong",
+            error: e
+        })
+    }
 
+})
+
+
+app.get("/chats/:roomId", async (req: Request, res: Response) => {
+    try {
+        const roomId = req.params.roomId;
+
+        // getting all chats of a particular room 
+        const chats = await prisma.default.chat.findMany({
+            where: {
+                roomId: Number(roomId),
+            },
+            orderBy: {
+                id: "desc"
+            },
+            take: 50
+        })
+        if (!chats) {
+            res.json({
+                message: "No chats found "
+            })
+        }
+
+        // sending chats to user
+        res.json({
+            chats: chats
+        })
+
+
+
+    } catch (e) {
+        console.log("something went wrong ", e);
     }
 
 })

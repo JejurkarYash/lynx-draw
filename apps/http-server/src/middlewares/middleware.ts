@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express"
-import jwt from 'jsonwebtoken';
+import jwt, { Jwt, JwtPayload } from 'jsonwebtoken';
 import { JWT_SECRET } from "@repo/backend-common/config";
+import { de } from "zod/v4/locales";
 export const Auth = (req: Request, res: Response, next: NextFunction) => {
 
     try {
@@ -17,7 +18,7 @@ export const Auth = (req: Request, res: Response, next: NextFunction) => {
         }
 
         // setting the user info to the request header 
-        req.userInfo = decode as userInfo
+        req.userId = (decode as JwtPayload).userId
         //  provideing control to the next endpoint 
         next();
 

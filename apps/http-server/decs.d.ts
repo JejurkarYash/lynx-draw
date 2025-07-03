@@ -1,11 +1,11 @@
 type userInfo = {
-    id: string,
+    UserId: string,
     email: string
 }
 
 declare namespace Express {
     interface Request {
-        userInfo?: userInfo
+        userId: string
     }
 
 }
