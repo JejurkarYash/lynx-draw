@@ -21,7 +21,9 @@ const PORT = Number(process.env.PORT);
 const wss = new WebSocketServer({ port: PORT })
 
 wss.on("listening", () => console.log("Websocket server is listening on port: ", PORT))
-wss.on("error", (e) => console.log(e.message))
+wss.on("error", (e) => {
+    console.log("something went wrong:", e.message)
+})
 
 
 // Initialzing an empty map for storing socket instance 
@@ -75,13 +77,10 @@ const addUserToRoom = async (userId: string, roomId: number) => {
     try {
 
         const userData = await redis.get(`users:${userId}`);
-        console.log(userData);
         if (userData) {
             const user = JSON.parse(userData);
             if (!user.roomIds.includes(roomId)) {
                 user.roomIds.push(roomId);
-
-                console.log(user);
                 //  pushing the room into user's roomIds array
                 await redis.set(`users:${userId}`, JSON.stringify(user));
                 // pushing the user into room
@@ -108,17 +107,32 @@ const processMessageQueue = async () => {
             if (result) {
                 const [, messageString] = result;
                 const message = JSON.parse(messageString);
-                console.log(message);
-                if (message.type === "CHAT" && message.content && message.roomId && message.timestamp) {
-                    // storing messages into database 
-                    await prisma.default.chat.create({
-                        data: {
-                            roomId: Number(message.roomId),
-                            userId: message.userId,
-                            message: message.content
+                console.log("Queue:", message);
 
-                        }
+                if (message.type === "CHAT" && message.content && message.roomId && message.timestamp) {
+                    console.log("if block");
+                    const data = {
+                        roomId: Number(message.roomId),
+                        userId: message.userId,
+                        startX: message.content.startX,
+                        startY: message.content.startY,
+                        height: message.content.height,
+                        width: message.content.width,
+                        type: message.content.type,
+                        radius: message.content.radius,
+                        color: message.content.color,
+                        lineWidth: message.content.lineWidth,
+                        endX: message.content.endX,
+                        endY: message.content.endY,
+                    }
+
+                    console.log("before puting shape into database ")
+                    // storing messages into database 
+                    const res = await prisma.default.shapes.create({
+                        data: data
                     })
+
+                    console.log(res);
                 }
 
             }
@@ -136,7 +150,14 @@ processMessageQueue();
 //* Entry point 
 wss.on("connection", async (ws, req) => {
     try {
-        const token = req.headers.authorization;
+        console.log("control reach here");
+        const url = req.url;
+        if (!url) {
+            return;
+        }
+        const queryParams = new URLSearchParams(url.split("?")[1]);
+        const token = queryParams.get("token");
+
         if (!token) return;
         const userId = checkUser(token)
         if (userId == null) {
@@ -148,33 +169,30 @@ wss.on("connection", async (ws, req) => {
         socketMap.set(userId, ws);
         // storing user into redis 
         await addUserToRedis(userId, []);
-        ws.send(`user is store in the redis `)
+        // ws.send(`user is store in the redis `)
 
 
 
         ws.on("message", async (msg) => {
             try {
+                console.log(msg.toString());
                 const message: message = JSON.parse(msg.toString());
                 if (message.type === "JOIN_ROOM" && message.roomId) {
                     //  pushing the user into particular room 
                     await addUserToRoom(userId, message?.roomId);
-                    const ws = socketMap.get(userId)
-                    ws?.send(`user join to room:${message.roomId}`)
                 } else if (message.type === "CHAT" && message.content) {
                     //  pushing the messages to the message queue 
-
-                    await redis.lpush("messages:messageQeue", JSON.stringify({
+                    console.log("before pushing it into Queue")
+                    const res = await redis.lpush("messages:messageQeue", JSON.stringify({
                         ...message,
                         userId,
                         timestamp: new Date().toISOString()
                     }));
-                    ws.send("message is store in a message:queue")
 
                     // braodcasting messages to the everyone in that room 
 
                     const users = await redis.smembers(`rooms:${message.roomId}:users`);
                     users.forEach((user) => {
-
                         // getting user'f from map
                         const client = socketMap.get(user);
                         // braodcasting message to everyone except this websocket connection 

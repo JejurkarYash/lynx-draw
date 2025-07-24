@@ -17,6 +17,7 @@ model User {
   updatedAt DateTime @updatedAt
   rooms     Room[]
   chats     Chat[]
+  Shapes    Shapes[]
 }
 
 model Room {
@@ -27,6 +28,7 @@ model Room {
   updatedAt DateTime @updatedAt
   admin     User     @relation(fields: [adminId], references: [id])
   chats     Chat[]
+  Shapes    Shapes[]
 }
 
 model Chat {
@@ -36,4 +38,36 @@ model Chat {
   message String
   room    Room   @relation(fields: [roomId], references: [id])
   user    User   @relation(fields: [userId], references: [id])
+}
+
+enum shapeType {
+  RECTANGLE
+  CIRCLE
+  LINE
+  ERASER
+  PENCIL
+}
+
+model Shapes {
+  id        Int       @id @default(autoincrement())
+  type      shapeType
+  startX    Int
+  startY    Int
+  color     String?
+  height    Int
+  width     Int
+  lineWidth Int?
+  endX      Int?
+  endY      Int?
+  radius    Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // creating direct relation with room model
+  roomId Int
+  room   Room @relation(fields: [roomId], references: [id])
+
+  // creating direct relation with user model then we can understand the who draw's the shapes ? 
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 }

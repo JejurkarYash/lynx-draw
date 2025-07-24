@@ -154,6 +154,8 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
             return;
         }
 
+        console.log(userId);
+        console.log("before creating room");
         const room = await prisma.default.room.create({
             data: {
                 slug: parseBody.roomName,
@@ -161,6 +163,7 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
 
             }
         })
+        console.log(room);
 
         if (!room) {
             res.json({
@@ -177,6 +180,7 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
 
 
     } catch (e) {
+
         res.status(500).json({
             message: "something went wrong",
             error: e
@@ -186,19 +190,15 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
 })
 
 
-app.get("/chats/:roomId", async (req: Request, res: Response) => {
+app.get("/shapes/:roomId", async (req: Request, res: Response) => {
     try {
         const roomId = req.params.roomId;
 
         // getting all chats of a particular room 
-        const chats = await prisma.default.chat.findMany({
+        const chats = await prisma.default.shapes.findMany({
             where: {
                 roomId: Number(roomId),
             },
-            orderBy: {
-                id: "desc"
-            },
-            take: 50
         })
         if (!chats) {
             res.json({
