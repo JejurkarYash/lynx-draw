@@ -13,5 +13,13 @@ export type shape = {
     endX?: number,
     endY?: number,
     radius?: number
+    centerX?: number,
+    centerY?: number
 
 };
+
+export type EraserPathType = {
+    x: number,
+    y: number
+
+}

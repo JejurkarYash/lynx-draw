@@ -12,13 +12,34 @@ const Canva = ({ roomId, selectedTool }: { roomId: number, selectedTool: Tool })
 
 
     useEffect(() => {
-        if (!canvasRef.current) {
-            return;
-        }
-        canvasRef.current.height = window.innerHeight;
-        canvasRef.current.width = window.innerWidth;
+        const resizeCanvas = () => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
 
-    }, [])
+            const dpr = window.devicePixelRatio || 1;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // Set canvas size for high-DPI
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+
+            // Set CSS size
+            canvas.style.width = width + "px";
+            canvas.style.height = height + "px";
+
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.scale(dpr, dpr);
+            }
+        };
+
+        resizeCanvas(); // initial
+        window.addEventListener("resize", resizeCanvas);
+
+        return () => window.removeEventListener("resize", resizeCanvas);
+    }, []);
+
 
     // creating a connection with the websocket server
     useEffect(() => {
@@ -55,7 +76,7 @@ const Canva = ({ roomId, selectedTool }: { roomId: number, selectedTool: Tool })
     }, [canvasRef, socket, selectedTool]);
 
     return (
-        <canvas ref={canvasRef} className=' bg-black  h-full w-full    ' > </canvas>
+        <canvas ref={canvasRef} className=' absolute left-0 top-0 bg-black'  > </canvas>
     )
 }
 
