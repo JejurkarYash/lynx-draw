@@ -116,7 +116,9 @@ export class CanvasClass {
             this.ctx.scale(dpr, dpr);
         }
 
+        console.log("before db call")
         this.existingShape = await getExistingShapes(this.roomId);
+        console.log("afer db call")
         this.clearcanvas();
     }
 
@@ -127,11 +129,15 @@ export class CanvasClass {
         }
 
         this.socket.onmessage = (event) => {
-            console.log(event.data);
+            // console.log(event.data);
             const message = JSON.parse(event.data);
             if (message.type === "CHAT") {
                 const data = message.content;
                 this.existingShape.push(data);
+                this.clearcanvas();
+            } else if (message.type === "UPDATE_CHATS") {
+                console.log("update existing chats")
+                this.existingShape = message.content;
                 this.clearcanvas();
             }
         }
@@ -623,6 +629,19 @@ export class CanvasClass {
 
     }
 
+    deleteErasedShapes() {
+
+        if (!this.existingShape || !this.socket) return;
+
+        // sending the existing shapes 
+        this.socket.send(JSON.stringify({
+            type: "UPDATE_CHATS",
+            content: this.existingShape,
+            roomId: this.roomId
+        }))
+
+    }
+
     // functon for checking if any shape is in eraser path to remove from canvas 
     checkEraserCollisions(x: number, y: number) {
         const eraserSize = 10;
@@ -633,20 +652,13 @@ export class CanvasClass {
             height: eraserSize
         }
 
-        // getting only erased shapes to delete that shapes from db
-        this.erasedShapes = this.existingShape.filter((shape) => this.isShapeIntersetcting(shape, eraserBox));
-        console.log("Erased Shapes: ", this.erasedShapes);
 
         // rendering the erased shapes 
         this.existingShape = this.existingShape.filter(
             (shape) => !this.isShapeIntersetcting(shape, eraserBox)
         );
 
-
-
-        console.log("Existing Shapes : ", this.existingShape);
         this.clearcanvas();
-
 
 
     }
@@ -704,6 +716,7 @@ export class CanvasClass {
     }
 
     eraserUpHandler = (e: MouseEvent) => {
+        this.deleteErasedShapes();
         this.displayEraserPreview(e);
         this.isErasing = false;
         this.eraserPath = [];

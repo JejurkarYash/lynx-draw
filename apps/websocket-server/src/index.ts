@@ -40,7 +40,7 @@ interface socketType {
 }
 
 interface message {
-    type: "JOIN_ROOM" | "CHAT" | "LEAVE_ROOM",
+    type: "JOIN_ROOM" | "CHAT" | "LEAVE_ROOM" | "UPDATE_CHATS",
     content?: string,
     roomId?: number,
     timestamp?: string
@@ -107,7 +107,7 @@ const processMessageQueue = async () => {
             if (result) {
                 const [, messageString] = result;
                 const message = JSON.parse(messageString);
-                console.log("Queue:", message);
+                // console.log("Queue:", message);
 
                 if (message.type === "CHAT" && message.content && message.roomId && message.timestamp) {
                     console.log("if block");
@@ -133,6 +133,25 @@ const processMessageQueue = async () => {
                     })
 
                     console.log(res);
+                } else if (message.type === "UPDATE_CHATS" && message.content) {
+
+                    console.log(typeof message.content)
+                    let existingShapes = message.content;
+                    let existingShapeIds = existingShapes.map((shape: any) => shape.id);
+
+                    // deleting the shapes from the database 
+                    await prisma.default.shapes.deleteMany({
+                        where: {
+                            roomId: Number(message.roomId),
+                            id: {
+                                notIn: existingShapeIds
+                            }
+                        }
+                    })
+
+                    console.log("deleted succesfully ");
+
+
                 }
 
             }
@@ -175,7 +194,7 @@ wss.on("connection", async (ws, req) => {
 
         ws.on("message", async (msg) => {
             try {
-                console.log(msg.toString());
+                // console.log(msg.toString());
                 const message: message = JSON.parse(msg.toString());
                 if (message.type === "JOIN_ROOM" && message.roomId) {
                     //  pushing the user into particular room 
@@ -210,6 +229,37 @@ wss.on("connection", async (ws, req) => {
 
                     })
 
+                } else if (message.type === "UPDATE_CHATS" && message.content) {
+                    // pusing chats into queue for processing 
+                    const res = await redis.lpush("messages:messageQeue", JSON.stringify({
+                        ...message,
+                        userId,
+                        timestamp: new Date().toISOString()
+                    }));
+
+                    console.log("UPDATE_CHATS pushed to the queue ");
+
+
+
+                    // broadcasting messages to the other usres in the same room 
+                    const users = await redis.smembers(`rooms:${message.roomId}:users`);
+                    users.forEach((user) => {
+                        // getting user'f from map
+                        const client = socketMap.get(user);
+                        // braodcasting message to everyone except this websocket connection 
+                        if (client && client !== ws) {
+                            client.send(JSON.stringify({
+                                type: "UPDATE_CHATS",
+                                content: message.content,
+                                roomId: message.roomId,
+                                userId,
+                                timestamp: new Date().toISOString()
+                            }))
+
+                        }
+                    });
+
+                    console.log("UPDATED_CHATS broadcasted succesfully ");
                 }
 
 
