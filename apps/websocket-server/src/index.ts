@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import jwt, { JsonWebTokenError } from 'jsonwebtoken';
 import { JWT_SECRET } from "@repo/backend-common/config"
 import WebSocket from 'ws';
-import { Redis } from 'ioredis';
+import  { Redis } from 'ioredis';
 import prisma from '@repo/db/prismaClient';
 
 const redisUrl = process.env.REDIS_URL as string;
@@ -107,7 +107,7 @@ const processMessageQueue = async () => {
             if (result) {
                 const [, messageString] = result;
                 const message = JSON.parse(messageString);
-                // console.log("Queue:", message);
+                console.log("Queue:", message);
 
                 if (message.type === "CHAT" && message.content && message.roomId && message.timestamp) {
                     console.log("if block");
@@ -124,7 +124,11 @@ const processMessageQueue = async () => {
                         lineWidth: message.content.lineWidth,
                         endX: message.content.endX,
                         endY: message.content.endY,
+                        pencilPath: message.content.pencilPath,
                     }
+
+
+                    console.log(data);
 
                     console.log("before puting shape into database ")
                     // storing messages into database 
@@ -201,12 +205,12 @@ wss.on("connection", async (ws, req) => {
                     await addUserToRoom(userId, message?.roomId);
                 } else if (message.type === "CHAT" && message.content) {
                     //  pushing the messages to the message queue 
-                    console.log("before pushing it into Queue")
                     const res = await redis.lpush("messages:messageQeue", JSON.stringify({
                         ...message,
                         userId,
                         timestamp: new Date().toISOString()
                     }));
+                    console.log("after  pushing it into Queue")
 
                     // braodcasting messages to the everyone in that room 
 
@@ -228,6 +232,11 @@ wss.on("connection", async (ws, req) => {
 
 
                     })
+
+                    // pushing it into database
+
+
+
 
                 } else if (message.type === "UPDATE_CHATS" && message.content) {
                     // pusing chats into queue for processing 

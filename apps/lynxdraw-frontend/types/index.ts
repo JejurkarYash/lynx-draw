@@ -14,7 +14,8 @@ export type shape = {
     endY?: number,
     radius?: number
     centerX?: number,
-    centerY?: number
+    centerY?: number,
+    pencilPath?: pencilPathType[]
 
 };
 
@@ -22,4 +23,9 @@ export type EraserPathType = {
     x: number,
     y: number
 
+}
+
+export type pencilPathType = {
+    x: number,
+    y: number
 }

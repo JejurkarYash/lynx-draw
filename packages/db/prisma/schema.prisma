@@ -49,19 +49,20 @@ enum shapeType {
 }
 
 model Shapes {
-  id        Int       @id @default(autoincrement())
-  type      shapeType
-  startX    Int
-  startY    Int
-  color     String?
-  height    Int
-  width     Int
-  lineWidth Int?
-  endX      Int?
-  endY      Int?
-  radius    Int?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         Int       @id @default(autoincrement())
+  type       shapeType
+  startX     Int
+  startY     Int
+  color      String?
+  height     Int
+  width      Int
+  lineWidth  Int?
+  endX       Int?
+  endY       Int?
+  radius     Int?
+  pencilPath Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   // creating direct relation with room model
   roomId Int

@@ -193,7 +193,6 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
 app.get("/shapes/:roomId", async (req: Request, res: Response) => {
     try {
         const roomId = req.params.roomId;
-        console.log("control reach inside the shapes endpoint ")
         // getting all chats of a particular room 
         const chats = await prisma.default.shapes.findMany({
             where: {

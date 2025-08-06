@@ -9,7 +9,7 @@ import { Tool } from "../types/index";
 
 const Canvas = ({ roomId }: { roomId: number }) => {
     const socketRef = useRef<WebSocket>(undefined);
-    const [selectedTool, setSelectedTool] = useState<Tool>("ERASER");
+    const [selectedTool, setSelectedTool] = useState<Tool>("PENCIL");
 
 
     return (

@@ -1,6 +1,6 @@
 
 import { getExistingShapes } from "./util";
-import { Tool, shape, EraserPathType } from "../types/index";
+import { Tool, shape, EraserPathType, pencilPathType } from "../types/index";
 
 export class CanvasClass {
 
@@ -24,6 +24,9 @@ export class CanvasClass {
     private clicked: boolean;
     // shape array
     private selectedShape: shape[] = [];
+
+    // pencil paths 
+    private pencilPath: pencilPathType[] = [];
 
     // eraser variable 
     private isErasing: boolean = false;
@@ -63,6 +66,12 @@ export class CanvasClass {
         this.radius = 0;
         this.selectedTool = "RECTANGLE";
         this.canvas.style.cursor = "default";
+        this.pencilPath = [];
+
+
+
+        // defining some global styles for the canvas 
+
 
 
 
@@ -83,12 +92,11 @@ export class CanvasClass {
 
     // set the current tool for drawing 
     selectCurrentTool(selectedTool: Tool) {
-        console.log(selectedTool);
         this.selectedTool = selectedTool;
 
 
         if (this.selectedTool !== "MOUSE_SELECTION") {
-            this.canvas.style.cursor = "corsshair";
+            this.canvas.style.cursor = "crosshair";
         }
 
         if (this.selectedTool === "ERASER") {
@@ -103,22 +111,24 @@ export class CanvasClass {
     // Initializing an empty canva && fetching an existing shapes 
     async initCanvas() {
 
-        console.log(this.selectedTool);
         if (this.selectedTool === "ERASER") {
             this.initEraserHandlers();
 
         }
+
         const dpr = window.devicePixelRatio || 1;
         this.canvas.width = this.canvas.clientWidth * dpr;
         this.canvas.height = this.canvas.clientHeight * dpr;
 
-        if (this.ctx) {
-            this.ctx.scale(dpr, dpr);
-        }
+        if (!this.ctx) return;
 
-        console.log("before db call")
+        this.ctx.scale(dpr, dpr);
+
+        // definging some global styling for drawing elements 
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
+
         this.existingShape = await getExistingShapes(this.roomId);
-        console.log("afer db call")
         this.clearcanvas();
     }
 
@@ -133,22 +143,24 @@ export class CanvasClass {
             const message = JSON.parse(event.data);
             if (message.type === "CHAT") {
                 const data = message.content;
+                console.log(data);
                 this.existingShape.push(data);
                 this.clearcanvas();
             } else if (message.type === "UPDATE_CHATS") {
-                console.log("update existing chats")
                 this.existingShape = message.content;
                 this.clearcanvas();
             }
         }
     }
 
+
     // clearing the canvas before drawing && drawing the existing shapes on the canva
     clearcanvas() {
 
         this.ctx?.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // printing the existing shapes after clearing the canvas 
+        // printing the existing shapes after clearing the canvas
+        console.log(this.existingShape);
         if (this.existingShape) {
 
             this.existingShape.map((shape: shape) => {
@@ -183,6 +195,8 @@ export class CanvasClass {
                     this.drawCircle(shape);
                 } else if (shape.type === "LINE") {
                     this.drawLine(shape);
+                } else if (shape.type === "PENCIL") {
+                    this.drawPencil(shape);
                 }
 
 
@@ -243,6 +257,26 @@ export class CanvasClass {
         this.ctx.closePath();
     }
 
+    drawPencil(shape: shape) {
+
+        if (!this.ctx || !shape.pencilPath) return;
+        console.log(shape);
+        this.ctx.strokeStyle = "white";
+        this.ctx.lineWidth = 5;
+        this.ctx.beginPath();
+        for (let i = 1; i < this.pencilPath.length; i++) {
+            let prev = shape.pencilPath[i - 1];
+            let current = shape.pencilPath[i];
+
+            this.ctx.moveTo(prev.x, prev.y);
+            this.ctx.lineTo(current.x, current.y);
+
+        }
+        this.ctx.stroke();
+
+
+    }
+
 
 
     isShapeInSelectionBox(shape: shape, box: { x: number; y: number; width: number; height: number }) {
@@ -297,7 +331,7 @@ export class CanvasClass {
 
         // Default fallback (e.g., freehand)
         return false;
-    }
+    };
 
 
 
@@ -314,9 +348,12 @@ export class CanvasClass {
     }
 
     mouseDownHandler = (e: MouseEvent) => {
+
         this.clicked = true;
         this.startX = e.clientX;
         this.startY = e.clientY;
+
+
 
 
 
@@ -367,7 +404,9 @@ export class CanvasClass {
                     return;
                 }
 
-                this.clearcanvas();
+                if (this.selectedTool !== "PENCIL") {
+                    this.clearcanvas();
+                }
 
                 if (this.selectedTool === "RECTANGLE") {
                     const shape: shape = {
@@ -402,6 +441,7 @@ export class CanvasClass {
 
                 } else if (this.selectedTool === "LINE") {
 
+
                     const shape: shape = {
                         type: this.selectedTool,
                         startX: this.startX,
@@ -413,6 +453,25 @@ export class CanvasClass {
 
                     }
                     this.drawLine(shape);
+                    this.clearcanvas();
+                } else if (this.selectedTool === "PENCIL") {
+
+                    this.pencilPath.push({ x: e.clientX, y: e.clientY });
+
+                    const shape: shape = {
+                        type: this.selectedTool,
+                        startX: this.startX,
+                        startY: this.startY,
+                        height: 0,
+                        width: 0,
+                        pencilPath: this.pencilPath
+
+                    }
+
+                    this.drawPencil(shape);
+
+
+
                 }
 
 
@@ -441,6 +500,7 @@ export class CanvasClass {
         this.clicked = false;
         const endX = e.clientX;
         const endY = e.clientY;
+
         const shape: shape = {
             type: this.selectedTool,
             startX: this.selectedTool === "CIRCLE" ? this.centerX : this.startX,
@@ -450,8 +510,11 @@ export class CanvasClass {
             radius: this.radius,
             endX: endX,
             endY: endY,
+            pencilPath: this.pencilPath
 
         }
+        this.pencilPath = [];
+
 
 
         // normalize the box 
@@ -475,7 +538,6 @@ export class CanvasClass {
 
 
         if (!this.socket) {
-            console.log("before returning the ");
             return;
         }
 
@@ -489,6 +551,7 @@ export class CanvasClass {
 
         this.existingShape.push(shape);
         this.clearcanvas();
+
 
         this.socket?.send(JSON.stringify({
             type: 'CHAT',
