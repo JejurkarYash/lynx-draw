@@ -2,21 +2,19 @@ import { WebSocketServer } from 'ws';
 import jwt, { JsonWebTokenError } from 'jsonwebtoken';
 import { JWT_SECRET } from "@repo/backend-common/config"
 import WebSocket from 'ws';
-import  { Redis } from 'ioredis';
+import { Redis } from 'ioredis';
 import prisma from '@repo/db/prismaClient';
+import myQueue from './queue.ts';
 
 const redisUrl = process.env.REDIS_URL as string;
 // this redis connection is for non-blocking commands 
 const redis = new Redis(redisUrl);
 // this redis connection is for blocking command 
-const redisQueue = new Redis(redisUrl);
 
 redis.on('connect', () => console.log("redis is connected...."))
-redisQueue.on('connect', () => console.log("redisQues is connected....."));
 redis.on("error", (e) => console.log("something went wrong with redis client  ", e.message));
-redisQueue.on("error", (e) => console.log("something went wrong with redis Queue client  ", e.message));
 
-// Initializing a websocket server  
+// Initializing a websocket server          
 const PORT = Number(process.env.PORT);
 const wss = new WebSocketServer({ port: PORT })
 
@@ -46,7 +44,7 @@ interface message {
     timestamp?: string
 }
 
-// ? function to authenticate usser
+//  function to authenticate usser
 const checkUser = (token: string): string | null => {
 
     try {
@@ -67,12 +65,12 @@ const checkUser = (token: string): string | null => {
 
 }
 
-// ? function to add user into redis 
+//  function to add user into redis 
 const addUserToRedis = async (userId: string, roomIds: number[] = []) => {
     await redis.set(`users:${userId}`, JSON.stringify({ userId, roomIds }));
 }
 
-// ? function to push user into a particular room 
+//  function to push user into a particular room 
 const addUserToRoom = async (userId: string, roomId: number) => {
     try {
 
@@ -97,83 +95,82 @@ const addUserToRoom = async (userId: string, roomId: number) => {
 }
 
 
-const processMessageQueue = async () => {
-    while (true) {
-        try {
+// const processMessageQueue = async () => {
+//     while (true) {
+//         try {
 
-            // it will block until the message queue is empty 
-            // after that it will process the message one by one 
-            const result = await redisQueue.brpop('messages:messageQeue', 0);
-            if (result) {
-                const [, messageString] = result;
-                const message = JSON.parse(messageString);
-                console.log("Queue:", message);
+//             // it will block until the message queue is empty 
+//             // after that it will process the message one by one 
+//             const result = await redisQueue.brpop('messages:messageQeue', 0);
+//             if (result) {
+//                 const [, messageString] = result;
+//                 const message = JSON.parse(messageString);
+//                 console.log("Queue:", message);
 
-                if (message.type === "CHAT" && message.content && message.roomId && message.timestamp) {
-                    console.log("if block");
-                    const data = {
-                        roomId: Number(message.roomId),
-                        userId: message.userId,
-                        startX: message.content.startX,
-                        startY: message.content.startY,
-                        height: message.content.height,
-                        width: message.content.width,
-                        type: message.content.type,
-                        radius: message.content.radius,
-                        color: message.content.color,
-                        lineWidth: message.content.lineWidth,
-                        endX: message.content.endX,
-                        endY: message.content.endY,
-                        pencilPath: message.content.pencilPath,
-                    }
-
-
-                    console.log(data);
-
-                    console.log("before puting shape into database ")
-                    // storing messages into database 
-                    const res = await prisma.default.shapes.create({
-                        data: data
-                    })
-
-                    console.log(res);
-                } else if (message.type === "UPDATE_CHATS" && message.content) {
-
-                    console.log(typeof message.content)
-                    let existingShapes = message.content;
-                    let existingShapeIds = existingShapes.map((shape: any) => shape.id);
-
-                    // deleting the shapes from the database 
-                    await prisma.default.shapes.deleteMany({
-                        where: {
-                            roomId: Number(message.roomId),
-                            id: {
-                                notIn: existingShapeIds
-                            }
-                        }
-                    })
-
-                    console.log("deleted succesfully ");
+//                 if (message.type === "CHAT" && message.content && message.roomId && message.timestamp) {
+//                     console.log("if block");
+//                     const data = {
+//                         roomId: Number(message.roomId),
+//                         userId: message.userId,
+//                         startX: message.content.startX,
+//                         startY: message.content.startY,
+//                         height: message.content.height,
+//                         width: message.content.width,
+//                         type: message.content.type,
+//                         radius: message.content.radius,
+//                         color: message.content.color,
+//                         lineWidth: message.content.lineWidth,
+//                         endX: message.content.endX,
+//                         endY: message.content.endY,
+//                         pencilPath: message.content.pencilPath,
+//                     }
 
 
-                }
+//                     console.log(data);
 
-            }
+//                     console.log("before puting shape into database ")
+//                     // storing messages into database 
+//                     const res = await prisma.default.shapes.create({
+//                         data: data
+//                     })
 
-        } catch (e) {
-            console.log("something went wrong : ", e);
-        }
+//                     console.log(res);
+//                 } else if (message.type === "UPDATE_CHATS" && message.content) {
 
-    }
-}
+//                     console.log(typeof message.content)
+//                     let existingShapes = message.content;
+//                     let existingShapeIds = existingShapes.map((shape: any) => shape.id);
 
-processMessageQueue();
+//                     // deleting the shapes from the database 
+//                     await prisma.default.shapes.deleteMany({
+//                         where: {
+//                             roomId: Number(message.roomId),
+//                             id: {
+//                                 notIn: existingShapeIds
+//                             }
+//                         }
+//                     })
+
+//                     console.log("deleted succesfully ");
+
+
+//                 }
+
+//             }
+
+//         } catch (e) {
+//             console.log("something went wrong : ", e);
+//         }
+
+//     }
+// }
+
+// processMessageQueue();
 
 
 //* Entry point 
 wss.on("connection", async (ws, req) => {
     try {
-        console.log("control reach here");
         const url = req.url;
         if (!url) {
             return;
@@ -205,11 +202,12 @@ wss.on("connection", async (ws, req) => {
                     await addUserToRoom(userId, message?.roomId);
                 } else if (message.type === "CHAT" && message.content) {
                     //  pushing the messages to the message queue 
-                    const res = await redis.lpush("messages:messageQeue", JSON.stringify({
+
+                    await myQueue.add("insertIntoDB", {
                         ...message,
                         userId,
-                        timestamp: new Date().toISOString()
-                    }));
+                        timeStamep: new Date().toString()
+                    })
                     console.log("after  pushing it into Queue")
 
                     // braodcasting messages to the everyone in that room 
@@ -240,11 +238,19 @@ wss.on("connection", async (ws, req) => {
 
                 } else if (message.type === "UPDATE_CHATS" && message.content) {
                     // pusing chats into queue for processing 
-                    const res = await redis.lpush("messages:messageQeue", JSON.stringify({
+                    // const res = await redis.lpush("messages:messageQeue", JSON.stringify({
+                    //     ...message,
+                    //     userId,
+                    //     timestamp: new Date().toISOString()
+                    // }));
+
+                    await myQueue.add("UPDATED_CHATS", {
                         ...message,
                         userId,
-                        timestamp: new Date().toISOString()
-                    }));
+                        roomId: message.roomId,
+                        timeStamp: new Date().toString()
+                    })
+
 
                     console.log("UPDATE_CHATS pushed to the queue ");
 

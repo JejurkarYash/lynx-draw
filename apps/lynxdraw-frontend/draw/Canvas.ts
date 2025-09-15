@@ -129,6 +129,7 @@ export class CanvasClass {
         this.ctx.lineJoin = "round";
 
         this.existingShape = await getExistingShapes(this.roomId);
+        console.log(this.existingShape);
         this.clearcanvas();
     }
 
@@ -160,7 +161,7 @@ export class CanvasClass {
         this.ctx?.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // printing the existing shapes after clearing the canvas
-        console.log(this.existingShape);
+
         if (this.existingShape) {
 
             this.existingShape.map((shape: shape) => {
@@ -175,14 +176,72 @@ export class CanvasClass {
                     if (shape.type === "CIRCLE") {
 
                         // this is for circle
-                        if (!shape.radius || !shape.centerX || !shape.centerY) {
+                        if (!shape.radius || !shape.startX || !shape.startY) {
                             return;
                         }
-                        const boxX = shape.centerX - shape.radius - 4;
-                        const boxY = shape.centerY - shape.radius - 4;
+                        const boxX = shape.startX - shape.radius - 4;
+                        const boxY = shape.startY - shape.radius - 4;
                         const size = shape.radius * 2 + 8;
                         this.ctx.strokeRect(boxX, boxY, size, size);
 
+                    } else if (shape.type === "LINE") {
+                        if (shape.endX === undefined || shape.endY === undefined) {
+                            return;
+                        }
+
+                        const x1 = shape.startX;
+                        const y1 = shape.startY;
+                        const x2 = shape.endX as number;
+                        const y2 = shape.endY as number;
+
+                        // Calculate bounding box for the line
+                        const minX = Math.min(x1, x2);
+                        const maxX = Math.max(x1, x2);
+                        const minY = Math.min(y1, y2);
+                        const maxY = Math.max(y1, y2);
+
+                        // Add padding around the line
+                        const padding = 8;
+                        const boxX = minX - padding;
+                        const boxY = minY - padding;
+                        const boxWidth = (maxX - minX) + (2 * padding);
+                        const boxHeight = (maxY - minY) + (2 * padding);
+
+                        // For very thin lines (nearly horizontal or vertical), ensure minimum selection box size
+                        const minSize = 16;
+                        const finalWidth = Math.max(boxWidth, minSize);
+                        const finalHeight = Math.max(boxHeight, minSize);
+
+                        // Adjust position if we increased the size
+                        const adjustedX = boxX - (finalWidth - boxWidth) / 2;
+                        const adjustedY = boxY - (finalHeight - boxHeight) / 2;
+
+                        this.ctx.strokeRect(adjustedX, adjustedY, finalWidth, finalHeight);
+                    } else if (shape.type === "PENCIL") {
+                        if (!shape.pencilPath || shape.pencilPath.length === 0) {
+                            return;
+                        }
+
+                        // Calculate bounding box for pencil path
+                        let minX = shape.pencilPath[0].x;
+                        let maxX = shape.pencilPath[0].x;
+                        let minY = shape.pencilPath[0].y;
+                        let maxY = shape.pencilPath[0].y;
+
+                        shape.pencilPath.forEach(point => {
+                            minX = Math.min(minX, point.x);
+                            maxX = Math.max(maxX, point.x);
+                            minY = Math.min(minY, point.y);
+                            maxY = Math.max(maxY, point.y);
+                        });
+
+                        const padding = 6;
+                        this.ctx.strokeRect(
+                            minX - padding,
+                            minY - padding,
+                            (maxX - minX) + (2 * padding),
+                            (maxY - minY) + (2 * padding)
+                        );
                     } else {
                         // this is the selection for other shapes   
                         this.ctx.strokeRect(shape.startX - 4, shape.startY - 4, shape.width + 8, shape.height + 8);
@@ -259,15 +318,16 @@ export class CanvasClass {
 
     drawPencil(shape: shape) {
 
+
         if (!this.ctx || !shape.pencilPath) return;
-        console.log(shape);
         this.ctx.strokeStyle = "white";
         this.ctx.lineWidth = 5;
         this.ctx.beginPath();
-        for (let i = 1; i < this.pencilPath.length; i++) {
+        for (let i = 1; i < shape.pencilPath.length; i++) {
             let prev = shape.pencilPath[i - 1];
+            // console.log(prev);
             let current = shape.pencilPath[i];
-
+            // console.log(current);
             this.ctx.moveTo(prev.x, prev.y);
             this.ctx.lineTo(current.x, current.y);
 
@@ -278,7 +338,37 @@ export class CanvasClass {
     }
 
 
+    // / Helper function to check if two line segments intersect
+    linesIntersect(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number): boolean {
+        const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (Math.abs(denom) < 1e-10) return false; // Lines are parallel
 
+        const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+        const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+
+        return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+    }
+
+    // Helper function to check if a line intersects with a rectangle
+    lineIntersectsRect(x1: number, y1: number, x2: number, y2: number, rectX: number, rectY: number, rectX2: number, rectY2: number): boolean {
+        // Check if either endpoint is inside the rectangle
+        if ((x1 >= rectX && x1 <= rectX2 && y1 >= rectY && y1 <= rectY2) ||
+            (x2 >= rectX && x2 <= rectX2 && y2 >= rectY && y2 <= rectY2)) {
+            return true;
+        }
+
+        // Check intersection with each edge of the rectangle
+        return (
+            this.linesIntersect(x1, y1, x2, y2, rectX, rectY, rectX2, rectY) ||     // top edge
+            this.linesIntersect(x1, y1, x2, y2, rectX2, rectY, rectX2, rectY2) ||   // right edge
+            this.linesIntersect(x1, y1, x2, y2, rectX2, rectY2, rectX, rectY2) ||   // bottom edge
+            this.linesIntersect(x1, y1, x2, y2, rectX, rectY2, rectX, rectY)        // left edge
+        );
+    }
+
+
+
+    // checking weather the shape is inside the selection box
     isShapeInSelectionBox(shape: shape, box: { x: number; y: number; width: number; height: number }) {
         const boxRight = box.x + box.width;
         const boxBottom = box.y + box.height;
@@ -329,12 +419,60 @@ export class CanvasClass {
             );
         }
 
-        // Default fallback (e.g., freehand)
+        if (shape.type === "PENCIL" && shape.pencilPath) {
+
+            for (let i = 0; i < shape.pencilPath.length; i++) {
+                const point = shape.pencilPath[i];
+                if (point.x >= box.x && point.x <= boxRight &&
+                    point.y >= box.y && point.y <= boxBottom) {
+                    return true;
+                }
+            }
+
+            // Method 2: Check if any line segment of the pencil path intersects with the selection box
+            for (let i = 0; i < shape.pencilPath.length - 1; i++) {
+                const current = shape.pencilPath[i];
+                const next = shape.pencilPath[i + 1];
+
+                if (this.lineIntersectsRect(
+                    current.x, current.y,
+                    next.x, next.y,
+                    box.x, box.y,
+                    box.x + box.width, box.y + box.height
+                )) {
+                    return true;
+                }
+            }
+
+            // Method 3: Check if pencil path bounding box intersects with selection box
+            let minX = shape.pencilPath[0].x;
+            let maxX = shape.pencilPath[0].x;
+            let minY = shape.pencilPath[0].y;
+            let maxY = shape.pencilPath[0].y;
+
+            shape.pencilPath.forEach(point => {
+                minX = Math.min(minX, point.x);
+                maxX = Math.max(maxX, point.x);
+                minY = Math.min(minY, point.y);
+                maxY = Math.max(maxY, point.y);
+            });
+
+            return (
+                maxX >= box.x &&
+                minX <= boxRight &&
+                maxY >= box.y &&
+                minY <= boxBottom
+            );
+        }
+
         return false;
+
     };
 
 
 
+    // drawing a selection box when mouse move 
+    // it will display the rectangular selection box
     drawSelectionBox() {
         if (!this.ctx) return;
         const { x, y, width, height } = this.selectionBox;
@@ -369,10 +507,9 @@ export class CanvasClass {
                 active: true
             }
 
-            console.log(this.selectionBox);
+            // console.log(this.selectionBox);
 
         }
-
 
     }
 
@@ -453,7 +590,7 @@ export class CanvasClass {
 
                     }
                     this.drawLine(shape);
-                    this.clearcanvas();
+                    // this.clearcanvas();
                 } else if (this.selectedTool === "PENCIL") {
 
                     this.pencilPath.push({ x: e.clientX, y: e.clientY });
@@ -469,6 +606,7 @@ export class CanvasClass {
                     }
 
                     this.drawPencil(shape);
+                    // this.clearcanvas();
 
 
 
@@ -630,6 +768,37 @@ export class CanvasClass {
     }
 
 
+    // function for checking  the intersection of pencilpath
+    distPointToLineSegement(x: number, y: number, current: { x: number, y: number }, next: { x: number, y: number }) {
+        const A = x - current.x;
+        const B = y - current.y;
+        const C = next.x - current.x;
+        const D = next.y - current.y;
+
+        const dot = A * C + B * D;
+        const len_sq = C * C + D * D;
+        let param = -1;
+        if (len_sq !== 0) param = dot / len_sq;
+
+        let xx, yy;
+
+        if (param < 0) {
+            xx = current.x;
+            yy = current.y;
+        } else if (param > 1) {
+            xx = next.x;
+            yy = next.y;
+        } else {
+            xx = current.x + param * C;
+            yy = current.y + param * D;
+        }
+
+        const dx = x - xx;
+        const dy = y - yy;
+        return Math.sqrt(dx * dx + dy * dy);
+
+    }
+
     // funciton to check which shape is intersecting the eraser to 
     //  remove the object then 
 
@@ -680,10 +849,23 @@ export class CanvasClass {
 
 
 
-        }
+        } else if (shape.type === "PENCIL") {
+            if (!shape.pencilPath) return false;
 
+            const eraserX = box.x + box.width / 2;
+            const eraserY = box.y + box.height / 2
+            const eraserRadius = box.width / 2;
+            for (let i = 0; i < shape.pencilPath.length - 1; i++) {
+                const current = shape.pencilPath[i];
+                const next = shape.pencilPath[i + 1];
+                const dist = this.distPointToLineSegement(eraserX, eraserY, current, next);
 
-        else {
+                if (dist <= eraserRadius) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
             return false;
         }
 
@@ -720,6 +902,8 @@ export class CanvasClass {
         this.existingShape = this.existingShape.filter(
             (shape) => !this.isShapeIntersetcting(shape, eraserBox)
         );
+
+        console.log(this.existingShape);
 
         this.clearcanvas();
 
