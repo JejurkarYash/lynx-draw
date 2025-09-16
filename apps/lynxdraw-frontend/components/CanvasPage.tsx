@@ -9,7 +9,7 @@ import { Tool } from "../types/index";
 
 const Canvas = ({ roomId }: { roomId: number }) => {
     const socketRef = useRef<WebSocket>(undefined);
-    const [selectedTool, setSelectedTool] = useState<Tool>("CIRCLE");
+    const [selectedTool, setSelectedTool] = useState<Tool>("MOUSE_SELECTION");
 
 
     return (

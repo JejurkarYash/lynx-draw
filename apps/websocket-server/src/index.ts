@@ -74,7 +74,7 @@ const addUserToRedis = async (userId: string, roomIds: number[] = []) => {
 const addUserToRoom = async (userId: string, roomId: number) => {
     try {
 
-        const userData = await redis.get(`users:${userId}`);
+        const userDfsomeata = await redis.get(`users:${userId}`);
         if (userData) {
             const user = JSON.parse(userData);
             if (!user.roomIds.includes(roomId)) {
