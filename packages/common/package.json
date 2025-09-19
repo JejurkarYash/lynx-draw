@@ -10,7 +10,8 @@
     "dev": ""
   },
   "exports": {
-    "./types": "./src/types.ts"
+    "./types": "./dist/types.js",
+    "./dist/schema": "./dist/types.js"
   },
   "keywords": [],
   "author": "",

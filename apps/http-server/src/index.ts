@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { Auth } from "./middlewares/middleware.js"
 import dotenv from 'dotenv';
 import cors from "cors";
-import { userSchema, signInSchema, roomTypes, chatTypes } from "@lynx-draw/common/types"
+import { userSchema, signInSchema, roomTypes } from "@lynx-draw/common/types"
 import prisma from '@repo/db/prismaClient';
 import { ZodError } from 'zod/v4';
 import { JWT_SECRET } from "@repo/backend-common/config";

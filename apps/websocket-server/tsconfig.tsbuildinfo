@@ -1,1 +1,1 @@
-{"root":["./src/index.ts"],"version":"5.8.2"}
+{"root":["./src/index.ts","./src/queue.ts","./src/redisclient.ts","./src/server.ts","./src/worker.ts"],"errors":true,"version":"5.8.2"}
