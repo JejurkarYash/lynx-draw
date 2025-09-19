@@ -9,6 +9,11 @@
     "start": "node ./dist/index.js",
     "dev": "nodemon"
   },
+  "turbo": {
+    "outputs": [
+      "dist/**"
+    ]
+  },
   "devDependencies": {
     "@lynx-draw/common": "workspace:*",
     "@repo/db": "workspace:*",
