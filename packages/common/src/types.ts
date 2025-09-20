@@ -19,6 +19,6 @@ export const roomTypes = z.object({
 })
 
 export const chatTypes = z.object({
-    roomId: z.number(),
+    roomId: z.number().min(1),
     userId: z.string().optional()
 })
