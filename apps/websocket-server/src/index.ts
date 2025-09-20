@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import jwt, { JsonWebTokenError } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from "@repo/backend-common/config"
 import WebSocket from 'ws';
 import { Redis } from 'ioredis';
@@ -12,7 +12,7 @@ const redis = new Redis(redisUrl);
 // this redis connection is for blocking command 
 
 redis.on('connect', () => console.log("redis is connected...."))
-redis.on("error", (e) => console.log("something went wrong with redis client  ", e.message));
+redis.on("error", (e: any) => console.log("something went wrong with redis client  ", e.message));
 
 // Initializing a websocket server          
 const PORT = Number(process.env.PORT);
@@ -74,7 +74,7 @@ const addUserToRedis = async (userId: string, roomIds: number[] = []) => {
 const addUserToRoom = async (userId: string, roomId: number) => {
     try {
 
-        const userDfsomeata = await redis.get(`users:${userId}`);
+        const userData = await redis.get(`users:${userId}`);
         if (userData) {
             const user = JSON.parse(userData);
             if (!user.roomIds.includes(roomId)) {
