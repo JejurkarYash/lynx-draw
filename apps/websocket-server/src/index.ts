@@ -3,8 +3,7 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from "@repo/backend-common/config"
 import WebSocket from 'ws';
 import { Redis } from 'ioredis';
-import prisma from '@repo/db/prismaClient';
-import myQueue from './queue.ts';
+import myQueue from './queue.js';
 
 const redisUrl = process.env.REDIS_URL as string;
 // this redis connection is for non-blocking commands 

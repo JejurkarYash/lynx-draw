@@ -1,6 +1,6 @@
-import { RedisClient } from "./redisClient.ts";
+import { RedisClient } from "./redisClient.js";
 import { Worker } from "bullmq";
-import prisma from "@repo/db/prismaClient";
+import prisma from "@repo/db/PrismaClient";
 
 
 
@@ -16,7 +16,7 @@ const worker = new Worker("MessageQueue", async (job) => {
         try {
 
 
-            await prisma.default.shapes.create({
+            await prisma.shapes.create({
                 data: {
                     roomId: Number(message.roomId),
                     type: message.content.type,
@@ -53,7 +53,7 @@ const worker = new Worker("MessageQueue", async (job) => {
 
         try {
 
-            await prisma.default.shapes.deleteMany({
+            await prisma.shapes.deleteMany({
                 where: {
                     roomId: Number(message.roomId),
                     id: {

@@ -1,10 +1,9 @@
 import { Redis } from 'ioredis';
-import type redisType from 'ioredis';
 
 console.log("creating redis connection ");
 
 declare global {
-    var redisClient: redisType | undefined;
+    var redisClient: Redis | undefined;
 }
 const redis = global.redisClient || new Redis(process.env.REDIS_URL as string)
 
@@ -16,7 +15,7 @@ redis.on("connect", () => {
 })
 
 
-redis.on('error', (e) => {
+redis.on('error', (e: any) => {
     console.log("something went wrong ", e.message);
 })
 

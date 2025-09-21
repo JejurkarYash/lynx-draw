@@ -63,11 +63,16 @@ app.post("/signup", async (req: Request, res: Response) => {
                 "error": e.message
             });
 
-        } else {
+        } else if (e.code === "P2002") {
             res.json({
                 message: "User Already Exists ! ",
                 error: e
             }).status(409);
+        } else {
+            res.json({
+                message: "something went wrong ",
+                error: e
+            })
         }
     }
 

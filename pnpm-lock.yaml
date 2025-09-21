@@ -257,6 +257,10 @@ importers:
       ioredis:
         specifier: ^5.6.1
         version: 5.7.0
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/tailwind-config:
     devDependencies:

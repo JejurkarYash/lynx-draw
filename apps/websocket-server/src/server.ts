@@ -1,2 +1,2 @@
-import "./index.ts";
-import "./worker.ts"; 
+import "./index.js";
+import "./worker.js"; 

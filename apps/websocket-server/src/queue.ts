@@ -1,4 +1,4 @@
-import { RedisClient } from "./redisClient.ts";
+import { RedisClient } from "./redisClient.js";
 import { Queue } from "bullmq";
 
 const myQueue = new Queue("MessageQueue", {
