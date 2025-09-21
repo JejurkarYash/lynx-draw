@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express"
 import jwt, { Jwt, JwtPayload } from 'jsonwebtoken';
-import { JWT_SECRET } from "@repo/backend-common/config";
+import { JWT_SECRET } from "@repo/backend-common";
 import { de } from "zod/v4/locales";
 export const Auth = (req: Request, res: Response, next: NextFunction) => {
 

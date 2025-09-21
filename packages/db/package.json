@@ -10,7 +10,7 @@
     "dev": "prisma generate --watch"
   },
   "exports": {
-    "./prismaClient": "./dist/index.js"
+    "./PrismaClient": "./dist/index.js"
   },
   "keywords": [],
   "author": "",

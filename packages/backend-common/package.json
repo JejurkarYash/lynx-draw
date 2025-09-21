@@ -2,13 +2,18 @@
   "name": "@repo/backend-common",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/config.js",
+  "types": "./dist/config.d.ts",
   "type": "module",
   "exports": {
-    "./config": "./src/config.ts"
+    ".": "./dist/config.js",
+    "./config": "./dist/config.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -b"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*"

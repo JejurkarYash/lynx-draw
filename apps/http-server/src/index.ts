@@ -3,9 +3,9 @@ import { Auth } from "./middlewares/middleware.js"
 import dotenv from 'dotenv';
 import cors from "cors";
 import { userSchema, signInSchema, roomTypes } from "@lynx-draw/common"
-import prisma from '@repo/db/prismaClient';
+import prisma from '@repo/db/PrismaClient'
 import { ZodError } from 'zod/v4';
-import { JWT_SECRET } from "@repo/backend-common/config";
+import { JWT_SECRET } from "@repo/backend-common";
 import jwt from 'jsonwebtoken';
 import bcrypt from "bcrypt"
 
@@ -41,7 +41,7 @@ app.post("/signup", async (req: Request, res: Response) => {
 
         // hash the password before storing it in db 
         const hashPassword = await bcrypt.hash(parseBody.password, 10);
-        const user = await prisma.default.user.create({
+        const user = await prisma.user.create({
             data: {
                 name: parseBody.name,
                 email: parseBody.email,
@@ -91,7 +91,7 @@ app.post("/signin", async (req: Request, res: Response) => {
             return
         }
 
-        const user = await prisma.default.user.findUnique({
+        const user = await prisma.user.findUnique({
             where: {
                 email: parseBody.data.email,
             }
@@ -157,7 +157,7 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
 
         console.log(userId);
         console.log("before creating room");
-        const room = await prisma.default.room.create({
+        const room = await prisma.room.create({
             data: {
                 slug: parseBody.roomName,
                 adminId: userId
@@ -195,7 +195,7 @@ app.get("/shapes/:roomId", async (req: Request, res: Response) => {
     try {
         const roomId = req.params.roomId;
         // getting all chats of a particular room 
-        const chats = await prisma.default.shapes.findMany({
+        const chats = await prisma.shapes.findMany({
             where: {
                 roomId: Number(roomId),
             },
