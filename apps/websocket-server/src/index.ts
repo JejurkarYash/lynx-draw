@@ -4,14 +4,12 @@ import { JWT_SECRET } from "@repo/backend-common/config"
 import WebSocket from 'ws';
 import { Redis } from 'ioredis';
 import myQueue from './queue.js';
+import { getGeneralRedis } from "./RedisManager.js"
 
-const redisUrl = process.env.REDIS_URL as string;
-// this redis connection is for non-blocking commands 
-const redis = new Redis(redisUrl);
-// this redis connection is for blocking command 
+// initialzing redis connection
+const redis = getGeneralRedis();
 
-redis.on('connect', () => console.log("redis is connected...."))
-redis.on("error", (e: any) => console.log("something went wrong with redis client  ", e.message));
+
 
 // Initializing a websocket server          
 const PORT = Number(process.env.PORT);
@@ -94,77 +92,6 @@ const addUserToRoom = async (userId: string, roomId: number) => {
 }
 
 
-// const processMessageQueue = async () => {
-//     while (true) {
-//         try {
-
-//             // it will block until the message queue is empty 
-//             // after that it will process the message one by one 
-//             const result = await redisQueue.brpop('messages:messageQeue', 0);
-//             if (result) {
-//                 const [, messageString] = result;
-//                 const message = JSON.parse(messageString);
-//                 console.log("Queue:", message);
-
-//                 if (message.type === "CHAT" && message.content && message.roomId && message.timestamp) {
-//                     console.log("if block");
-//                     const data = {
-//                         roomId: Number(message.roomId),
-//                         userId: message.userId,
-//                         startX: message.content.startX,
-//                         startY: message.content.startY,
-//                         height: message.content.height,
-//                         width: message.content.width,
-//                         type: message.content.type,
-//                         radius: message.content.radius,
-//                         color: message.content.color,
-//                         lineWidth: message.content.lineWidth,
-//                         endX: message.content.endX,
-//                         endY: message.content.endY,
-//                         pencilPath: message.content.pencilPath,
-//                     }
-
-
-//                     console.log(data);
-
-//                     console.log("before puting shape into database ")
-//                     // storing messages into database 
-//                     const res = await prisma.default.shapes.create({
-//                         data: data
-//                     })
-
-//                     console.log(res);
-//                 } else if (message.type === "UPDATE_CHATS" && message.content) {
-
-//                     console.log(typeof message.content)
-//                     let existingShapes = message.content;
-//                     let existingShapeIds = existingShapes.map((shape: any) => shape.id);
-
-//                     // deleting the shapes from the database 
-//                     await prisma.default.shapes.deleteMany({
-//                         where: {
-//                             roomId: Number(message.roomId),
-//                             id: {
-//                                 notIn: existingShapeIds
-//                             }
-//                         }
-//                     })
-
-//                     console.log("deleted succesfully ");
-
-
-//                 }
-
-//             }
-
-//         } catch (e) {
-//             console.log("something went wrong : ", e);
-//         }
-
-//     }
-// }
-
-// processMessageQueue();
 
 
 //* Entry point 

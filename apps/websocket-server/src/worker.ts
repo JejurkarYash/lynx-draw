@@ -1,9 +1,21 @@
-import { RedisClient } from "./redisClient.js";
+// import { RedisClient } from "./redisClient.js";
 import { Worker } from "bullmq";
 import prisma from "@repo/db/PrismaClient";
+import { config } from "dotenv"
+// import { Redis } from "ioredis";
+// import { redis } from "@repo/redis-client/redis"
+import { getBullMQRedis } from "./RedisManager.js"
 
+config();
 
+// const redisConnection = new Redis(process.env.REDIS_URL as string, {
+//     maxRetriesPerRequest: null
+// })
 
+// redisConnection.on("connect", () => console.log("redis worker is connected"))
+// redisConnection.on("error", (e: any) => console.log("redis worker error: ", e.message))
+
+const redisConnection = getBullMQRedis();
 
 const worker = new Worker("MessageQueue", async (job) => {
     console.log("data receive");
@@ -67,17 +79,8 @@ const worker = new Worker("MessageQueue", async (job) => {
         }
 
     }
-
-
-
-
-
-
-
-
-
 }, {
-    connection: RedisClient
+    connection: redisConnection
 })
 
 
@@ -97,4 +100,3 @@ worker.on("completed", (job) => {
 worker.on("error", (e) => {
     console.log("something went wrong while processing job ", e.message);
 })
-
