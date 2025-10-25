@@ -79,10 +79,55 @@ app.post("/signup", async (req: Request, res: Response) => {
 
 })
 
+app.post("/google-login", async (req: Request, res: Response) => {
+    try {
+        const body = req.body;
+        const parseBody = userSchema.omit({ password: true }).parse(body);
 
 
+        // check if user already exists
+        let user = await prisma.user.findUnique({
+            where: {
+                email: parseBody.email,
+            }
+        })
 
-// creating a signin endpoint for user to signin 
+
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    name: parseBody.name,
+                    email: parseBody.email,
+                    password: " "
+                }
+            })
+        }
+
+        console.log(user);
+
+        const token = jwt.sign({ email: user.email, userId: user.id }, JWT_SECRET as string)
+        res.status(200).json({
+            message: "Google Login Successful",
+            token: token
+        })
+
+    } catch (e: any) {
+        if (e instanceof ZodError) {
+            res.status(400).json({
+                "message": "Invalid Input !",
+                "error": e.message
+            })
+        } else {
+            console.log("something went wrong with prisma")
+            res.status(500).json({
+                "message": "Something went wrong ! ",
+                error: e
+            })
+        }
+    }
+})
+
+// creating a signin endpoint for user to signin
 app.post("/signin", async (req: Request, res: Response) => {
 
     try {
@@ -118,6 +163,7 @@ app.post("/signin", async (req: Request, res: Response) => {
             return;
         }
 
+        // signing the jwt token
         const token = jwt.sign({ email: user.email, userId: user.id }, JWT_SECRET as string)
         res.status(200).json({
             message: "Signin Succesfully ",

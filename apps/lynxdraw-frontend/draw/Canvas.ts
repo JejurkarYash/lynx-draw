@@ -73,8 +73,6 @@ export class CanvasClass {
         // defining some global styles for the canvas 
 
 
-
-
         // calling the function's when the constructor get called 
         this.initCanvas();
         this.initMouseHandlers();
