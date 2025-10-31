@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { CanvasClass } from '@/draw/Canvas';
 import { Tool } from "../types/index";
+import { useSession } from "next-auth/react";
 
 
 
@@ -9,6 +10,7 @@ const Canva = ({ roomId, selectedTool }: { roomId: number, selectedTool: Tool })
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const [socket, setSocket] = useState<WebSocket | undefined>();
     const canvaClassRef = useRef<CanvasClass>(undefined);
+    const { data: session, status } = useSession();
 
 
     useEffect(() => {
@@ -44,13 +46,19 @@ const Canva = ({ roomId, selectedTool }: { roomId: number, selectedTool: Tool })
     // creating a connection with the websocket server
     useEffect(() => {
         const token = localStorage.getItem("token");
+        if (!token) {
+            console.error("No token found in localStorage");
+            return;
+        }
         const ws_url = process.env.NEXT_PUBLIC_WS_URL;
         const ws = new WebSocket(`${ws_url}?token=${token}`);
 
+
         if (!ws) {
             return;
+        } else {
+            console.log("Websocket connected...")
         }
-
         ws.onopen = () => {
             setSocket(ws);
             const msg = {

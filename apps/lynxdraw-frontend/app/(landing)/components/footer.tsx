@@ -2,6 +2,16 @@
 import Image from 'next/image'
 import React, { useRef } from 'react'
 import { motion, useInView } from "motion/react"
+import Link from 'next/link';
+
+
+
+const menuItems = [
+    { name: 'Home', link: '#home' },
+    { name: "Features", link: "#features" },
+    { name: "How It Works", link: "#how-it-works" },
+    { name: "Benefits", link: "#benefits" }
+]
 
 const footer = () => {
     const ref = useRef(null);
@@ -39,38 +49,21 @@ const footer = () => {
                         transition={{ staggerChildren: 0.1, delayChildren: 0.8 }}
                         className='flex flex-row items-center justify-between '>
                         <ul className=' flex flex-row items-center justify-between gap-6 text-neutral-400 '>
-                            <motion.li
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                                transition={{ duration: 0.4, delay: 0.9 }}
-                                whileHover={{ y: -2, color: "#ffffff" }}
-                                className=' hover:cursor-pointer transition-colors duration-200'>
-                                Home
-                            </motion.li>
-                            <motion.li
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                                transition={{ duration: 0.4, delay: 1.0 }}
-                                whileHover={{ y: -2, color: "#ffffff" }}
-                                className=' hover:cursor-pointer transition-colors duration-200'>
-                                Features
-                            </motion.li>
-                            <motion.li
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                                transition={{ duration: 0.4, delay: 1.1 }}
-                                whileHover={{ y: -2, color: "#ffffff" }}
-                                className=' hover:cursor-pointer transition-colors duration-200'>
-                                How It Works
-                            </motion.li>
-                            <motion.li
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-                                transition={{ duration: 0.4, delay: 1.2 }}
-                                whileHover={{ y: -2, color: "#ffffff" }}
-                                className=' hover:cursor-pointer transition-colors duration-200'>
-                                Benefits
-                            </motion.li>
+                            {menuItems.map((item, index) => (
+                                <motion.li
+                                    key={item.name}
+                                    initial={{ opacity: 0, y: -20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
+                                    whileHover={{ y: -2 }}
+                                    className=
+                                    "inline-block transition-all duration-300"
+                                >
+                                    <Link href={item.link} className='hover:text-accent text-neutral-400 transition-colors duration-200'>
+                                        {item.name}
+                                    </Link>
+                                </motion.li>
+                            ))}
                         </ul>
                     </motion.div>
                 </motion.div>

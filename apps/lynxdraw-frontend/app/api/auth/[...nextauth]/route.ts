@@ -6,6 +6,12 @@ import axios from "axios";
 declare module "next-auth" {
     interface Session {
         accessToken?: string;
+        user: {
+            id?: string | null,
+            name?: string | null,
+            email?: string | null,
+            image?: string | null
+        }
     }
 }
 
@@ -35,6 +41,7 @@ const handler = NextAuth({
                         throw new Error("No token received from backend");
                     }
 
+                    token.userId = response.data.userId;
                     token.accessToken = response.data.token;
                 } catch (err) {
                     console.log("Error during Google login:", err);
@@ -46,6 +53,10 @@ const handler = NextAuth({
 
         async session({ session, token }: { session: Session, token: any }) {
             session.accessToken = token.accessToken;
+            session.user.id = token.userId;
+            session.user.name = token.name;
+            session.user.email = token.email;
+            session.user.image = token.picture;
             return session;
         }
     }

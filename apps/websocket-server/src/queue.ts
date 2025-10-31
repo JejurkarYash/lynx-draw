@@ -1,5 +1,3 @@
-// import { redis } from "@repo/redis-client/redis"
-// import { redis } from "./redisClient.js";
 import { Queue } from "bullmq";
 // import { Redis } from "ioredis";
 import { config } from "dotenv"

@@ -84,7 +84,7 @@ app.post("/google-login", async (req: Request, res: Response) => {
         const body = req.body;
         const parseBody = userSchema.omit({ password: true }).parse(body);
 
-
+        console.log("control reach here")
         // check if user already exists
         let user = await prisma.user.findUnique({
             where: {
@@ -108,7 +108,8 @@ app.post("/google-login", async (req: Request, res: Response) => {
         const token = jwt.sign({ email: user.email, userId: user.id }, JWT_SECRET as string)
         res.status(200).json({
             message: "Google Login Successful",
-            token: token
+            token: token,
+            userId: user.id
         })
 
     } catch (e: any) {
