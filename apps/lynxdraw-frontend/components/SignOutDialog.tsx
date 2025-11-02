@@ -14,6 +14,7 @@ export default function SignOutDialog({ isOpen, onClose }: SignOutDialogProps) {
 
     const handleSignOut = async () => {
         await signOut({ callbackUrl: "/" });
+        localStorage.remoteItem("token");
         onClose();
     };
 

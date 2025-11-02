@@ -41,6 +41,7 @@ const cta = () => {
 
                     <motion.button
                         initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                        
                         animate={isInView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 20, scale: 0.9 }}
                         transition={{ duration: 0.6, delay: 1.0 }}
                         whileHover={{ scale: 1.05, y: -2 }}

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from "motion/react"
 import { useSession, signIn } from "next-auth/react";
 import SignOutDialog from "@/components/SignOutDialog";
-
+import { useRouter } from "next/navigation";
 
 const menuItems = [
     { name: 'Home', link: '#home' },
@@ -18,6 +18,7 @@ const NavBar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const { data: session, status } = useSession();
     const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
+    const router = useRouter();
 
 
     useEffect(() => {
@@ -35,7 +36,6 @@ const NavBar = () => {
             console.log("Session loading...");
         }
         if (status === "authenticated") {
-            console.log("Token: ", session.accessToken);
             localStorage.setItem("token", session?.accessToken || "");
         }
     }, [session, status])
@@ -147,12 +147,13 @@ const NavBar = () => {
                             /* User is not logged in */
                             <>
                                 {isScrolled ? (
+
                                     <motion.button
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={() => signIn()}
+                                        onClick={() => router.push('/api/auth/signup')}
                                         className='bg-accent text-white px-3 py-1 rounded-md cursor-pointer text-base hover:bg-accent/80 transition absolute right-0 top-1/2 transform -translate-y-1/2 h-10 w-32'>
                                         Get Started
                                     </motion.button>
@@ -161,14 +162,14 @@ const NavBar = () => {
                                         <motion.button
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
-                                            onClick={() => signIn()}
+                                            onClick={() => router.push('/api/auth/signup')}
                                             className='text-foreground border border-accent px-3 py-1 rounded-md transition cursor-pointer text-sm hover:bg-accent/80 h-10 w-24'>
                                             Login
                                         </motion.button>
                                         <motion.button
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
-                                            onClick={() => signIn()}
+                                            onClick={() => router.push('/api/auth/signup')}
                                             className='bg-accent text-white px-3 py-1 rounded-md cursor-pointer hover:bg-accent/80 transition text-sm h-10 w-24'>
                                             Sign Up
                                         </motion.button>

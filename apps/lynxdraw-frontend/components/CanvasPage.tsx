@@ -12,9 +12,9 @@ const Canvas = ({ roomId }: { roomId: number }) => {
     const [selectedTool, setSelectedTool] = useState<Tool>("CIRCLE");
 
     return (
-        <div className=' fixed top-0 left-0  w-screen h-screen  '>
+        <div className=' fixed inset-0  w-screen h-screen  '>
             <Canva roomId={roomId} selectedTool={selectedTool} ></Canva>
-        </div>  
+        </div>
     )
 }
 

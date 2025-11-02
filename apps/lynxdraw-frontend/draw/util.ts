@@ -8,6 +8,7 @@ export const getExistingShapes = async (roomId: number) => {
     const backend_url = process.env.NEXT_PUBLIC_HTTP_BAKCKEND_URL;
     const response = await axios.get(`${backend_url}/shapes/${roomId}`);
     if (!response) {
+        console.log("something went wrong ")
         return;
     }
 
