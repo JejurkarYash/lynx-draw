@@ -31,7 +31,7 @@ const handler = NextAuth({
                 console.log("account: ", account, "profile:", profile);
                 try {
                     // calling express  endpoint
-                    const response = await axios.post(`http://localhost:3001/google-login`, {
+                    const response = await axios.post(`${process.env.NEXT_PUBLIC_HTTP_BAKCKEND_URL}/google-login`, {
                         name: profile.name,
                         email: profile.email,
                     });

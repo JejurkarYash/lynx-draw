@@ -207,35 +207,47 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
             return;
         }
 
-        console.log(userId);
-        console.log("before creating room");
-        const room = await prisma.room.create({
-            data: {
-                slug: parseBody.roomName,
-                adminId: userId
-
+        // checking if room exist or not ? 
+        let room = await prisma.room.findUnique({
+            where: {
+                slug: parseBody.roomName
             }
         })
-        console.log(room);
 
+        // if room is not exist then creating a new room 
         if (!room) {
-            res.json({
-                message: "somethign went wrong"
+            room = await prisma.room.create({
+                data: {
+                    slug: parseBody.roomName,
+                    adminId: userId
+
+                }
             })
+
+            res.status(200).json({
+                message: "Room Created Succesfully ! ",
+                roomId: room.id,
+                adminId: room.adminId
+            })
+
             return;
         }
 
         res.status(200).json({
-            message: "Room Created Succesfully ! ",
-            roomId: room.id,
-            adminId: room.adminId
+            message: "Already Exist !",
+            room
         })
 
-
-    } catch (e) {
-
+    } catch (e: any) {
+        if (e instanceof ZodError) {
+            res.status(400).json({
+                message: "Input Validation",
+                error: e
+            })
+            return;
+        };
         res.status(500).json({
-            message: "something went wrong",
+            message: "Internal Server Error ",
             error: e
         })
     }
