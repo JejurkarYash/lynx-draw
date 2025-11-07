@@ -2,10 +2,23 @@
 import Image from 'next/image'
 import React, { useRef } from 'react'
 import { motion, useInView } from "motion/react"
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 
 const cta = () => {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+    const handleCtaClick = () => {
+        if (status === "authenticated") {
+            router.push('/dashboard');
+        } else {
+            router.push('/api/auth/signin');
+        }
+    }
 
     return (
         <section ref={ref} className=" flex items-center min-h-screen justify-center px-4 -mt-20  ">
@@ -41,11 +54,12 @@ const cta = () => {
 
                     <motion.button
                         initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                        
+
                         animate={isInView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 20, scale: 0.9 }}
                         transition={{ duration: 0.6, delay: 1.0 }}
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
+                        onClick={handleCtaClick}
                         className=" bg-white text-purple-700 py-3 px-6 rounded-lg font-semibold cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 ">
                         Start A Canvas
                     </motion.button>

@@ -4,6 +4,7 @@ import "./globals.css";
 import Provider from "@/components/Provider";
 import MobileWarning from "@/components/MobileWarning";
 import { Toaster } from "sonner";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LyxnDraw",
   description: "A collaborative white canvas ",
+  icons: [
+    {
+      url: '/favicon.svg',
+    }
+  ]
 };
 
 export default function RootLayout({
@@ -30,6 +36,18 @@ export default function RootLayout({
       <body suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-3VJPDECYCM"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-3VJPDECYCM');
+          `}
+        </Script>
         <Provider>
           <MobileWarning />
           {children}

@@ -3,9 +3,24 @@ import { BackgroundLines } from '@/components/ui/background-lines';
 import { Button } from '@/components/ui/Button';
 import Image from 'next/image';
 import React from 'react'
-import { motion } from "motion/react"
+import { motion } from "motion/react";
+import { useSession } from "next-auth/react";
+import { useRouter } from 'next/navigation';
+import { Elsie_Swash_Caps } from 'next/font/google';
+
 
 const Hero = () => {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
+    const handleGetStarted = () => {
+        if (status === "authenticated") {
+            router.push('/dashboard');
+        } else {
+            router.push('/api/auth/signin');
+        }
+    }
+
     return (
         <section className='min-h-screen relative overflow-hidden '>
             <BackgroundLines className="min-h-screen w-full flex items-center justify-center">
@@ -58,6 +73,7 @@ const Hero = () => {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            onClick={handleGetStarted}
                             className="rainbow-btn relative w-[160px] h-12 flex items-center justify-center gap-2.5 px-6 bg-black rounded-xl border-none text-white cursor-pointer font-semibold transition-all duration-200">
                             Give it a shot
                         </motion.button>
