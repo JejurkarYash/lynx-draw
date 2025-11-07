@@ -6,6 +6,12 @@ import { useState, useEffect, FormEvent } from "react";
 import Image from "next/image";
 import axios from "axios";
 import Link from "next/link";
+import { toast } from "sonner";
+
+type recentRoomType = {
+    name: string,
+    id: number
+}
 
 export default function DashboardPage() {
     const { data: session, status } = useSession();
@@ -13,7 +19,8 @@ export default function DashboardPage() {
     const [roomId, setRoomId] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const [recentRooms, setRecentRooms] = useState<string[]>([]);
-    const [roomName, setRoomName] = useState<string>("")
+    const [roomName, setRoomName] = useState<string>("");
+    const [error, setError] = useState<string | null>(null);
 
     // Redirect to login if not authenticated
     useEffect(() => {
@@ -32,22 +39,38 @@ export default function DashboardPage() {
 
     // Create a new room
     const handleCreateRoom = async (e: FormEvent) => {
-        e.preventDefault();
-        setIsCreating(true);
-
-        const newRoom = await axios.post(`${process.env.NEXT_PUBLIC_HTTP_BAKCKEND_URL}/room`, {
-            roomName: roomName
-        })
-
-        console.log(newRoom.data);
+        try {
+            e.preventDefault();
+            if (!roomName.trim()) return;
+            setIsCreating(true);
 
 
-        // Save to recent rooms
-        // const updatedRooms = [newRoomId, ...recentRooms.slice(0, 4)];
-        // localStorage.setItem("recentRooms", JSON.stringify(updatedRooms));
+            const newRoom = await axios.post(`${process.env.NEXT_PUBLIC_HTTP_BAKCKEND_URL}/room`, {
+                roomName: roomName
+            },
+                {
+                    headers: {
+                        authorization: session?.accessToken
+                    }
+                }
+            )
 
-        // Navigate to canvas
-        // router.push(`/canvas/${newRoomId}`);
+            if (newRoom.status === 200) {
+                setIsCreating(false);
+                toast.success("Room created successfully!");
+            }
+            // Save to recent rooms
+            const updatedRooms = [newRoom.data.roomId, ...recentRooms.slice(0, 4)];
+            localStorage.setItem("recentRooms", JSON.stringify(updatedRooms));
+
+            // Navigate to canvas
+            router.push(`/canvas/${newRoom.data.roomId}`);
+
+        } catch (e: any) {
+            setIsCreating(false);
+            setError(e.response?.data?.message || "An error occurred while creating the room.");
+            toast.error(e.response?.data?.message)
+        }
     };
 
     // Join existing room
@@ -151,7 +174,10 @@ export default function DashboardPage() {
                                     type="text"
                                     placeholder="Enter Unique Room Name "
                                     value={roomName}
-                                    onChange={(e) => setRoomName(e.target.value)}
+                                    onChange={(e) => {
+                                        setIsCreating(false);
+                                        setRoomName(e.target.value)
+                                    }}
                                     className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent"
                                 />
 

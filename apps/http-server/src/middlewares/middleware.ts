@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from "express"
 import jwt, { Jwt, JwtPayload } from 'jsonwebtoken';
 import { JWT_SECRET } from "@repo/backend-common";
-import { de } from "zod/v4/locales";
 export const Auth = (req: Request, res: Response, next: NextFunction) => {
 
     try {
 
         const token = req.headers['authorization'] || " ";
         const decode = jwt.verify(token, JWT_SECRET as string)
+
 
         if (!decode) {
             res.status(401).json({

@@ -32,6 +32,8 @@ export class CanvasClass {
     private isErasing: boolean = false;
     private erasedShapes: shape[] = [];
     private eraserPath: EraserPathType[] = [];
+    private eraserPreviewScheduled: boolean = false; //  Throttle flag for eraser preview
+    private eraserAnimationFrameId: number | null = null; //  Track animation frame to cancel it
 
     private socket: WebSocket | undefined;
     private existingShape: shape[];
@@ -44,6 +46,16 @@ export class CanvasClass {
         active: ConstrainBoolean
 
     } = { x: 0, y: 0, width: 0, height: 0, active: false };
+
+    // Viewport state for infinite canvas
+    private viewport: {
+        offsetX: number;
+        offsetY: number;
+        scale: number;
+    } = { offsetX: 0, offsetY: 0, scale: 1 };
+
+    // Flag to prevent drawing during panning
+    private isPanningCanvas: boolean = false;
 
 
 
@@ -88,20 +100,60 @@ export class CanvasClass {
         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
     };
 
+    // Set viewport for infinite canvas
+    setViewport(viewport: { offsetX: number; offsetY: number; scale: number }) {
+        this.viewport = viewport;
+    }
+
+    // Set panning state
+    setIsPanning(isPanning: boolean) {
+        this.isPanningCanvas = isPanning;
+    }
+
+    // Convert screen coordinates to world coordinates
+    screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
+        // First, get canvas-relative coordinates
+        const rect = this.canvas.getBoundingClientRect();
+        const canvasX = screenX - rect.left;
+        const canvasY = screenY - rect.top;
+
+        // Then convert to world coordinates with viewport transform
+        return {
+            x: (canvasX - this.viewport.offsetX) / this.viewport.scale,
+            y: (canvasY - this.viewport.offsetY) / this.viewport.scale
+        };
+    }
+
+    // Convert world coordinates to screen coordinates
+    worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
+        return {
+            x: worldX * this.viewport.scale + this.viewport.offsetX,
+            y: worldY * this.viewport.scale + this.viewport.offsetY
+        };
+    }
+
     // set the current tool for drawing 
     selectCurrentTool(selectedTool: Tool) {
-        this.selectedTool = selectedTool;
+        const previousTool = this.selectedTool;
 
-
-        if (this.selectedTool !== "MOUSE_SELECTION") {
-            this.canvas.style.cursor = "crosshair";
+        // Clean up previous tool state BEFORE updating tool
+        if (previousTool === "ERASER") {
+            // Remove eraser handlers when switching away from eraser
+            this.removeEraserHandlers();
         }
 
-        if (this.selectedTool === "ERASER") {
-            // remove the mousemove handler when the tool is eraser so ensure that it will never overwritten; 
-            this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
-            this.initEraserHandlers();
+        // Update the selected tool AFTER cleanup
+        this.selectedTool = selectedTool;
+
+        // Set cursor and initialize new tool
+        if (this.selectedTool === "MOUSE_SELECTION") {
+            this.canvas.style.cursor = "default";
+        } else if (this.selectedTool === "ERASER") {
             this.canvas.style.cursor = "none";
+            // Add eraser-specific handlers
+            this.initEraserHandlers();
+        } else {
+            this.canvas.style.cursor = "crosshair";
         }
     }
 
@@ -120,7 +172,8 @@ export class CanvasClass {
 
         if (!this.ctx) return;
 
-        this.ctx.scale(dpr, dpr);
+        // DON'T apply DPR scaling here - we'll handle it in clearcanvas
+        // this.ctx.scale(dpr, dpr); // ? REMOVED
 
         // definging some global styling for drawing elements 
         this.ctx.lineCap = "round";
@@ -155,8 +208,23 @@ export class CanvasClass {
 
     // clearing the canvas before drawing && drawing the existing shapes on the canva
     clearcanvas() {
+        if (!this.ctx) return;
 
-        this.ctx?.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const dpr = window.devicePixelRatio || 1;
+
+        // Clear entire canvas in screen space (without transform)
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset to identity
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+
+        // Apply viewport transformation for drawing (including DPR)
+        this.ctx.save();
+        this.ctx.setTransform(
+            this.viewport.scale * dpr, 0,
+            0, this.viewport.scale * dpr,
+            this.viewport.offsetX * dpr, this.viewport.offsetY * dpr
+        );
 
         // printing the existing shapes after clearing the canvas
 
@@ -165,10 +233,9 @@ export class CanvasClass {
             this.existingShape.map((shape: shape) => {
 
                 if (this.selectedShape.some((s) => s === shape)) {
-                    console.log("shape: ", shape,);
                     if (!this.ctx) return;
                     this.ctx.strokeStyle = "oklch(67.3% 0.182 276.935)";
-                    this.ctx.lineWidth = 1.5;
+                    this.ctx.lineWidth = 1.5 / this.viewport.scale; // Scale line width
 
                     // cheking if the selected shape is circle or rectangle 
                     if (shape.type === "CIRCLE") {
@@ -265,10 +332,8 @@ export class CanvasClass {
 
         }
 
-
-
-
-
+        // Restore context after drawing
+        this.ctx.restore();
     }
 
 
@@ -280,7 +345,7 @@ export class CanvasClass {
             return;
         }
         this.ctx.strokeStyle = "white";
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 4 / this.viewport.scale; // Scale line width
         this.ctx?.strokeRect(shape.startX, shape.startY, shape.width, shape.height);
     }
 
@@ -291,7 +356,7 @@ export class CanvasClass {
         };
 
         this.ctx.strokeStyle = "white";
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 4 / this.viewport.scale; // Scale line width
         this.ctx.beginPath();
         this.ctx.arc(shape.startX, shape.startY, shape.radius, 0, 2 * Math.PI, true);
         this.ctx.stroke();
@@ -306,7 +371,7 @@ export class CanvasClass {
         }
 
         this.ctx.strokeStyle = "white";
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 4 / this.viewport.scale; // Scale line width
         this.ctx?.beginPath();
         this.ctx?.moveTo(shape.startX, shape.startY);
         this.ctx?.lineTo(Number(shape.endX), Number(shape.endY));
@@ -319,7 +384,7 @@ export class CanvasClass {
 
         if (!this.ctx || !shape.pencilPath) return;
         this.ctx.strokeStyle = "white";
-        this.ctx.lineWidth = 5;
+        this.ctx.lineWidth = 5 / this.viewport.scale; // Scale line width
         this.ctx.beginPath();
         for (let i = 1; i < shape.pencilPath.length; i++) {
             let prev = shape.pencilPath[i - 1];
@@ -419,6 +484,11 @@ export class CanvasClass {
 
         if (shape.type === "PENCIL" && shape.pencilPath) {
 
+            // Check if pencilPath has elements
+            if (shape.pencilPath.length === 0) {
+                return false;
+            }
+
             for (let i = 0; i < shape.pencilPath.length; i++) {
                 const point = shape.pencilPath[i];
                 if (point.x >= box.x && point.x <= boxRight &&
@@ -485,21 +555,31 @@ export class CanvasClass {
 
     mouseDownHandler = (e: MouseEvent) => {
 
+        // Don't draw if panning
+        if (this.isPanningCanvas) {
+            return;
+        }
+
+        // Convert screen coordinates to world coordinates
+        const worldCoords = this.screenToWorld(e.clientX, e.clientY);
+
+        // Don't start drawing if Shift is held (for panning), but still update position
+        if (e.shiftKey) {
+            // Update startX/startY so line tool doesn't start from 0,0
+            this.startX = worldCoords.x;
+            this.startY = worldCoords.y;
+            return;
+        }
+
         this.clicked = true;
-        this.startX = e.clientX;
-        this.startY = e.clientY;
-
-
-
-
+        this.startX = worldCoords.x;
+        this.startY = worldCoords.y;
 
         // setting the starting point for selection box 
-
-
         if (this.selectedTool === 'MOUSE_SELECTION') {
             this.selectionBox = {
-                x: e.clientX,
-                y: e.clientY,
+                x: worldCoords.x,
+                y: worldCoords.y,
                 width: 0,
                 height: 0,
                 active: true
@@ -514,12 +594,20 @@ export class CanvasClass {
 
     handleMouseMove = (e: MouseEvent) => {
 
+        // Don't draw if panning
+        if (this.isPanningCanvas) {
+            return;
+        }
+
+        // Convert screen coordinates to world coordinates
+        const worldCoords = this.screenToWorld(e.clientX, e.clientY);
+
         if (this.selectedTool === "MOUSE_SELECTION" && this.selectionBox.active === true) {
             this.selectionBox = {
-                x: Math.min(this.selectionBox.x, e.clientX),
-                y: Math.min(this.selectionBox.y, e.clientY),
-                width: Math.abs(e.clientX - this.selectionBox.x),
-                height: Math.abs(e.clientY - this.selectionBox.y),
+                x: Math.min(this.selectionBox.x, worldCoords.x),
+                y: Math.min(this.selectionBox.y, worldCoords.y),
+                width: Math.abs(worldCoords.x - this.selectionBox.x),
+                height: Math.abs(worldCoords.y - this.selectionBox.y),
                 active: true
             }
 
@@ -530,8 +618,8 @@ export class CanvasClass {
         // for drawing the in general shapes 
         if (this.clicked) {
 
-            this.width = e.clientX - this.startX;
-            this.height = e.clientY - this.startY;
+            this.width = worldCoords.x - this.startX;
+            this.height = worldCoords.y - this.startY;
 
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
 
@@ -539,8 +627,18 @@ export class CanvasClass {
                     return;
                 }
 
+                // For non-pencil tools, clear and redraw with transform
                 if (this.selectedTool !== "PENCIL") {
                     this.clearcanvas();
+
+                    // Apply viewport transform for live preview drawing
+                    const dpr = window.devicePixelRatio || 1;
+                    this.ctx.save();
+                    this.ctx.setTransform(
+                        this.viewport.scale * dpr, 0,
+                        0, this.viewport.scale * dpr,
+                        this.viewport.offsetX * dpr, this.viewport.offsetY * dpr
+                    );
                 }
 
                 if (this.selectedTool === "RECTANGLE") {
@@ -581,8 +679,8 @@ export class CanvasClass {
                         type: this.selectedTool,
                         startX: this.startX,
                         startY: this.startY,
-                        endX: e.clientX,
-                        endY: e.clientY,
+                        endX: worldCoords.x,
+                        endY: worldCoords.y,
                         height: this.height,
                         width: this.width
 
@@ -591,7 +689,7 @@ export class CanvasClass {
                     // this.clearcanvas();
                 } else if (this.selectedTool === "PENCIL") {
 
-                    this.pencilPath.push({ x: e.clientX, y: e.clientY });
+                    this.pencilPath.push({ x: worldCoords.x, y: worldCoords.y });
 
                     const shape: shape = {
                         type: this.selectedTool,
@@ -603,11 +701,25 @@ export class CanvasClass {
 
                     }
 
+                    // Apply viewport transform for pencil drawing
+                    const dpr = window.devicePixelRatio || 1;
+                    this.ctx.save();
+                    this.ctx.setTransform(
+                        this.viewport.scale * dpr, 0,
+                        0, this.viewport.scale * dpr,
+                        this.viewport.offsetX * dpr, this.viewport.offsetY * dpr
+                    );
+
                     this.drawPencil(shape);
+
+                    this.ctx.restore();
                     // this.clearcanvas();
 
+                }
 
-
+                // Restore context for non-pencil tools
+                if (this.selectedTool !== "PENCIL") {
+                    this.ctx.restore();
                 }
 
 
@@ -633,9 +745,17 @@ export class CanvasClass {
     // handling thte mouse Up handling 
     mouseUpHandler = (e: MouseEvent) => {
 
+        // If we were never in drawing mode (e.g., Shift+drag panning), don't send anything
+        if (!this.clicked) {
+            return;
+        }
+
         this.clicked = false;
-        const endX = e.clientX;
-        const endY = e.clientY;
+
+        // Convert screen coordinates to world coordinates
+        const worldCoords = this.screenToWorld(e.clientX, e.clientY);
+        const endX = worldCoords.x;
+        const endY = worldCoords.y;
 
         const shape: shape = {
             type: this.selectedTool,
@@ -677,7 +797,14 @@ export class CanvasClass {
             return;
         }
 
-        if (this.startX === e.clientX) {
+        // Compare world coordinates properly (check if mouse didn't move significantly)
+        const distanceMoved = Math.sqrt(
+            Math.pow(endX - this.startX, 2) +
+            Math.pow(endY - this.startY, 2)
+        );
+
+        // Only skip if mouse moved less than 2 pixels in world space
+        if (distanceMoved < 2) {
             return;
         }
 
@@ -720,15 +847,8 @@ export class CanvasClass {
 
     // for getting mouse posotion according to canvas 
     getMousePosition(e: MouseEvent): { x: number, y: number } {
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-
-        return {
-            x: (e.clientX - rect.left),
-            y: (e.clientY - rect.top)
-        }
-
+        // Use screen to world conversion for accurate positioning
+        return this.screenToWorld(e.clientX, e.clientY);
     }
 
 
@@ -802,19 +922,18 @@ export class CanvasClass {
 
     isShapeIntersetcting(shape: shape, box: { x: number, y: number, width: number, height: number }): boolean {
 
-        const shapeBox = {
-            x: shape.startX,
-            y: shape.startY,
-            width: shape.width,
-            height: shape.height
-        }
-
         if (shape.type === "RECTANGLE") {
+            // Normalize the shape box to handle negative width/height
+            const shapeLeft = Math.min(shape.startX, shape.startX + shape.width);
+            const shapeRight = Math.max(shape.startX, shape.startX + shape.width);
+            const shapeTop = Math.min(shape.startY, shape.startY + shape.height);
+            const shapeBottom = Math.max(shape.startY, shape.startY + shape.height);
+
             return !(
-                box.x > shapeBox.x + shapeBox.width ||
-                box.x + box.width < shapeBox.x ||
-                box.y > shapeBox.y + shapeBox.height ||
-                box.y + box.height < shapeBox.y
+                box.x > shapeRight ||
+                box.x + box.width < shapeLeft ||
+                box.y > shapeBottom ||
+                box.y + box.height < shapeTop
             )
         } else if (shape.type === "CIRCLE") {
 
@@ -823,7 +942,7 @@ export class CanvasClass {
             // getting the centerX and ceterY of the circle 
             const centerX = shape.startX;
             const centerY = shape.startY;
-            // Find the closest point on the selection box to the circle center
+            // Find the closest point on the eraser box to the circle center
             const closestX = Math.max(box.x, Math.min(centerX, box.x + box.width));
             const closestY = Math.max(box.y, Math.min(centerY, box.y + box.height));
 
@@ -840,10 +959,17 @@ export class CanvasClass {
         } else if (shape.type === "LINE") {
 
             const { startX, startY, endX, endY } = shape;
+            if (endX === undefined || endY === undefined) return false;
 
-            const dist = this.distanceToLine(startX, startY, Number(endX), Number(endY), box.x + box.width / 2, box.y + box.height / 2);
+            const eraserCenterX = box.x + box.width / 2;
+            const eraserCenterY = box.y + box.height / 2;
+            const eraserRadius = box.width / 2;
 
-            return dist <= box.width / 2;
+            // Calculate distance from eraser center to the line
+            const dist = this.distanceToLine(startX, startY, Number(endX), Number(endY), eraserCenterX, eraserCenterY);
+
+            // Increase tolerance for better line erasing (eraser radius + line thickness buffer)
+            return dist <= eraserRadius + 4;
 
 
 
@@ -853,12 +979,15 @@ export class CanvasClass {
             const eraserX = box.x + box.width / 2;
             const eraserY = box.y + box.height / 2
             const eraserRadius = box.width / 2;
+
+            // Check each line segment in the pencil path
             for (let i = 0; i < shape.pencilPath.length - 1; i++) {
                 const current = shape.pencilPath[i];
                 const next = shape.pencilPath[i + 1];
                 const dist = this.distPointToLineSegement(eraserX, eraserY, current, next);
 
-                if (dist <= eraserRadius) {
+                // Add buffer for pencil line thickness (5px)
+                if (dist <= eraserRadius + 2.5) {
                     return true;
                 }
             }
@@ -876,6 +1005,7 @@ export class CanvasClass {
 
         if (!this.existingShape || !this.socket) return;
 
+        console.log("erasing the shapes ")
         // sending the existing shapes 
         this.socket.send(JSON.stringify({
             type: "UPDATE_CHATS",
@@ -887,49 +1017,89 @@ export class CanvasClass {
 
     // functon for checking if any shape is in eraser path to remove from canvas 
     checkEraserCollisions(x: number, y: number) {
-        const eraserSize = 10;
-        const eraserBox = {
-            x: x - eraserSize / 2,
-            y: y - eraserSize / 2,
-            width: eraserSize,
-            height: eraserSize
+        // Only check collisions if eraser tool is selected
+        if (this.selectedTool !== "ERASER") {
+            return;
         }
 
+        // Keep eraser size constant in world coordinates (divided by scale to stay same visual size)
+        const eraserSizeInScreen = 20; // Fixed screen size (20px)
+        const eraserSizeInWorld = eraserSizeInScreen / this.viewport.scale;
 
-        // rendering the erased shapes 
+        const eraserBox = {
+            x: x - eraserSizeInWorld / 2,
+            y: y - eraserSizeInWorld / 2,
+            width: eraserSizeInWorld,
+            height: eraserSizeInWorld
+        }
+
+        // Filter out erased shapes
         this.existingShape = this.existingShape.filter(
             (shape) => !this.isShapeIntersetcting(shape, eraserBox)
         );
 
-        console.log(this.existingShape);
-
+        // Always clear and redraw when actively erasing to keep canvas updated
         this.clearcanvas();
-
-
     }
 
 
     // function to display the eraser preview or shape 
     displayEraserPreview(e: MouseEvent) {
 
+        // Only display preview if eraser tool is selected
+        if (this.selectedTool !== "ERASER") {
+            return;
+        }
+
         if (!this.ctx) return;
-        this.clearcanvas();
 
         const { x, y } = this.getMousePosition(e);
 
+        const dpr = window.devicePixelRatio || 1;
 
-        this.ctx?.beginPath();
-        this.ctx.arc(x, y, 10 / 2, 0, Math.PI * 2);
-        this.ctx.fillStyle = "rgba(0, 0, 0, 0.1)"; // light preview
+        // Fixed eraser size in screen space (20px diameter)
+        const eraserRadiusInScreen = 10; // 10px radius = 20px diameter
+        const eraserRadiusInWorld = eraserRadiusInScreen / this.viewport.scale;
+
+        // Clear canvas when hovering (not erasing)
+        // When erasing, checkEraserCollisions handles clearcanvas before we draw preview
+        if (!this.isErasing) {
+            this.clearcanvas();
+        }
+
+        // Apply viewport transform for eraser preview (including DPR)
+        this.ctx.save();
+        this.ctx.setTransform(
+            this.viewport.scale * dpr, 0,
+            0, this.viewport.scale * dpr,
+            this.viewport.offsetX * dpr, this.viewport.offsetY * dpr
+        );
+
+        // Draw eraser preview circle
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, eraserRadiusInWorld, 0, Math.PI * 2);
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.15)"; // slightly more visible
         this.ctx.strokeStyle = "white";
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 2 / this.viewport.scale; // Scale line width
         this.ctx.fill();
         this.ctx.stroke();
+
+        this.ctx.restore();
 
     }
 
 
     eraserDownHandler = (e: MouseEvent) => {
+
+        // Only run if eraser tool is selected
+        if (this.selectedTool !== "ERASER") {
+            return;
+        }
+
+        // Don't erase if panning or Shift is held
+        if (this.isPanningCanvas || e.shiftKey) {
+            return;
+        }
 
         // it is used to display the eraser shape 
 
@@ -937,34 +1107,66 @@ export class CanvasClass {
         const { x, y } = this.getMousePosition(e);
         this.eraserPath = [{ x, y }];
         this.checkEraserCollisions(x, y);
-        this.displayEraserPreview(e);
     }
 
     eraserMoveHandler = (e: MouseEvent) => {
 
+        // Only run if eraser tool is selected
+        if (this.selectedTool !== "ERASER") {
+            return;
+        }
 
-        // for reducing the visual lag
-        requestAnimationFrame(() => {
+        // Don't erase if panning
+        if (this.isPanningCanvas) {
+            return;
+        }
 
+        // Throttle collision checking (erasing) using requestAnimationFrame
+        if (this.isErasing && !this.eraserPreviewScheduled) {
+            this.eraserPreviewScheduled = true;
+            this.eraserAnimationFrameId = requestAnimationFrame(() => {
+                // Double-check tool hasn't changed during frame delay
+                if (this.selectedTool !== "ERASER") {
+                    this.eraserPreviewScheduled = false;
+                    this.eraserAnimationFrameId = null;
+                    return;
+                }
+
+                // Erase shapes if mouse is down
+                if (this.isErasing) {
+                    const { x, y } = this.getMousePosition(e);
+                    this.eraserPath.push({ x, y });
+                    this.checkEraserCollisions(x, y);
+
+                    // Always show preview after erasing to keep it visible
+                    this.displayEraserPreview(e);
+                }
+
+                this.eraserPreviewScheduled = false;
+                this.eraserAnimationFrameId = null;
+            });
+        } else if (!this.isErasing) {
+            // Show preview immediately when just hovering (not erasing)
             this.displayEraserPreview(e);
-            if (!this.isErasing) return;
-            const { x, y } = this.getMousePosition(e);
-            this.eraserPath.push({ x, y });
-            this.checkEraserCollisions(x, y);
-            this.displayEraserPreview(e);
-        })
-
-
-
-
-
+        }
     }
 
     eraserUpHandler = (e: MouseEvent) => {
-        this.deleteErasedShapes();
-        this.displayEraserPreview(e);
-        this.isErasing = false;
-        this.eraserPath = [];
+        // Only run if eraser tool is selected
+        if (this.selectedTool !== "ERASER") {
+            return;
+        }
+
+        if (this.isErasing) {
+            this.deleteErasedShapes();
+            this.isErasing = false;
+            this.eraserPath = [];
+        }
+
+        // Show preview after releasing mouse (only if still on eraser tool)
+        if (this.selectedTool === "ERASER") {
+            this.displayEraserPreview(e);
+        }
     }
 
 
@@ -974,10 +1176,37 @@ export class CanvasClass {
             return;
         }
 
+        // Remove any existing eraser handlers first to prevent duplicates
+        this.removeEraserHandlers();
+
         this.canvas.addEventListener("mousedown", this.eraserDownHandler);
         this.canvas.addEventListener("mousemove", this.eraserMoveHandler);
         this.canvas.addEventListener("mouseup", this.eraserUpHandler);
+    }
 
+    // Remove eraser handlers when switching to another tool
+    removeEraserHandlers() {
+        if (!this.canvas) {
+            return;
+        }
+
+        // Cancel any pending animation frame
+        if (this.eraserAnimationFrameId !== null) {
+            cancelAnimationFrame(this.eraserAnimationFrameId);
+            this.eraserAnimationFrameId = null;
+        }
+
+        this.canvas.removeEventListener("mousedown", this.eraserDownHandler);
+        this.canvas.removeEventListener("mousemove", this.eraserMoveHandler);
+        this.canvas.removeEventListener("mouseup", this.eraserUpHandler);
+
+        // Reset eraser state
+        this.isErasing = false;
+        this.eraserPath = [];
+        this.eraserPreviewScheduled = false;
+
+        // Force clear canvas to remove any lingering eraser preview
+        this.clearcanvas();
     }
 
 

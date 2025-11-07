@@ -2,9 +2,9 @@ import React from 'react'
 import Canvas from '@/components/CanvasPage';
 
 const CanvasPage = async ({ params }: {
-    params: {
+    params: Promise<{
         roomId: number
-    }
+    }>
 }) => {
 
     const roomId = (await params).roomId;

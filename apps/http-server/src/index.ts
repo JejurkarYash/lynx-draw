@@ -207,36 +207,23 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
             return;
         }
 
-        // checking if room exist or not ? 
-        let room = await prisma.room.findUnique({
-            where: {
-                slug: parseBody.roomName
+        // if room is not exist then creating a new room 
+        const room = await prisma.room.create({
+            data: {
+                slug: parseBody.roomName,
+                adminId: userId
+
             }
         })
 
-        // if room is not exist then creating a new room 
-        if (!room) {
-            room = await prisma.room.create({
-                data: {
-                    slug: parseBody.roomName,
-                    adminId: userId
-
-                }
-            })
-
-            res.status(200).json({
-                message: "Room Created Succesfully ! ",
-                roomId: room.id,
-                adminId: room.adminId
-            })
-
-            return;
-        }
-
         res.status(200).json({
-            message: "Already Exist !",
-            room
+            message: "Room Created Succesfully ! ",
+            roomId: room.id,
+            adminId: room.adminId
         })
+
+        return;
+
 
     } catch (e: any) {
         if (e instanceof ZodError) {
@@ -245,7 +232,16 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
                 error: e
             })
             return;
-        };
+        }
+
+        if (e.code === "P2002") {
+            res.status(409).json({
+                message: "Room with this name already exists!",
+                error: "Duplicate room name"
+            })
+            return;
+        }
+
         res.status(500).json({
             message: "Internal Server Error ",
             error: e
