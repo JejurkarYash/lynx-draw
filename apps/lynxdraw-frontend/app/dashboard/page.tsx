@@ -90,6 +90,13 @@ export default function DashboardPage() {
         router.push(`/canvas/${id}`);
     };
 
+    const copyToClipBoard = (text: string) => {
+        if (text === " ") return;
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard!");
+        console.log("copied ", text);
+    }
+
     if (status === "loading") {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
@@ -170,16 +177,35 @@ export default function DashboardPage() {
                             </p>
 
                             <form onSubmit={handleCreateRoom} className="space-y-4">
-                                <input
-                                    type="text"
-                                    placeholder="Enter Unique Room Name "
-                                    value={roomName}
-                                    onChange={(e) => {
-                                        setIsCreating(false);
-                                        setRoomName(e.target.value)
-                                    }}
-                                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent"
-                                />
+                                <div className="relative  ">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Unique Room Name "
+                                        value={roomName}
+                                        onChange={(e) => {
+                                            setIsCreating(false);
+                                            setRoomName(e.target.value)
+                                        }}
+                                        className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-3 text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent"
+
+                                    />
+                                    <svg
+                                        className="w-5 h-5 text-accent absolute right-3 top-1/2 transform -translate-y-1/2 hover:cursor-pointer  "
+                                        onClick={() => copyToClipBoard(roomName)}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                        />
+                                    </svg>
+                                </div>
+
 
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
