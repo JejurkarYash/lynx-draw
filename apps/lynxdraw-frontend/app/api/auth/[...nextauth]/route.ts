@@ -31,7 +31,7 @@ const handler = NextAuth({
         try {
           // calling express  endpoint
           const response = await axios.post(
-            `https://lynx-draw-http.onrender.com/google-login`,
+            `${process.env.NEXT_PUBLIC_HTTP_BAKCKEND_URL}/google-login`,
             {
               name: profile.name,
               email: profile.email,
