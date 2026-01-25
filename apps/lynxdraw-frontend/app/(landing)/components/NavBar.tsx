@@ -36,6 +36,7 @@ const NavBar = () => {
             console.log("Session loading...");
         }
         if (status === "authenticated") {
+            console.log(session.accessToken); 
             localStorage.setItem("token", session?.accessToken || "");
         }
     }, [session, status])
@@ -116,7 +117,7 @@ const NavBar = () => {
 
                         {/* Loading state */}
                         {status === "loading" ? (
-                            <div className="animate-pulse bg-gray-300 h-10 w-10  rounded-full "></div>
+                            <div className="animate-pulse bg-gray-500 h-10 w-10  rounded-full "></div>
                         ) : session?.user ? (
                             /* User is logged in */
                             <div className="flex items-center gap-3">
