@@ -1,6 +1,5 @@
 generator client {
   provider      = "prisma-client-js"
-  // output        = "../generated/prisma"
   binaryTargets = ["native"]
   engineType    = "library"
 }
@@ -10,16 +9,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @unique @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  rooms     Room[]
-  chats     Chat[]
-  Shapes    Shapes[]
+model Chat {
+  id      Int    @id @default(autoincrement())
+  roomId  Int
+  userId  String
+  message String
+  Room    Room   @relation(fields: [roomId], references: [id])
+  User    User   @relation(fields: [userId], references: [id])
 }
 
 model Room {
@@ -27,27 +23,10 @@ model Room {
   slug      String   @unique
   adminId   String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  admin     User     @relation(fields: [adminId], references: [id])
-  chats     Chat[]
+  updatedAt DateTime @default(now())
+  Chat      Chat[]
+  User      User     @relation(fields: [adminId], references: [id])
   Shapes    Shapes[]
-}
-
-model Chat {
-  id      Int    @id @default(autoincrement())
-  roomId  Int
-  userId  String
-  message String
-  room    Room   @relation(fields: [roomId], references: [id])
-  user    User   @relation(fields: [userId], references: [id])
-}
-
-enum shapeType {
-  RECTANGLE
-  CIRCLE
-  LINE
-  ERASER
-  PENCIL
 }
 
 model Shapes {
@@ -62,15 +41,31 @@ model Shapes {
   endX       Int?
   endY       Int?
   radius     Int?
-  pencilPath Json?
   createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  updatedAt  DateTime? @default(now())
+  roomId     Int
+  userId     String
+  pencilPath Json?
+  Room       Room      @relation(fields: [roomId], references: [id])
+  User       User      @relation(fields: [userId], references: [id])
+}
 
-  // creating direct relation with room model
-  roomId Int
-  room   Room @relation(fields: [roomId], references: [id])
+model User {
+  id        String   @id @unique
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  Chat      Chat[]
+  Room      Room[]
+  Shapes    Shapes[]
+}
 
-  // creating direct relation with user model then we can understand the who draw's the shapes ? 
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+enum shapeType {
+  RECTANGLE
+  CIRCLE
+  LINE
+  ERASER
+  PENCIL
 }

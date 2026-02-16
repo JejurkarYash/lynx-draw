@@ -24,11 +24,11 @@ const worker = new Worker("MessageQueue", async (job) => {
 
     if (message.type === "CHAT") {
 
-        console.log("inside if statement")
         try {
 
 
             await prisma.shapes.create({
+                //@ts-ignore
                 data: {
                     roomId: Number(message.roomId),
                     type: message.content.type,
@@ -41,7 +41,7 @@ const worker = new Worker("MessageQueue", async (job) => {
                     endY: message.content.endY,
                     pencilPath: message.content.pencilPath,
                     userId: message.userId,
-                    createdAt: message.timeStamp
+                    createdAt: message.timeStamp,
 
                 }
             })

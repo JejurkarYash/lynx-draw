@@ -34,6 +34,7 @@ app.post("/signup", async (req: Request, res: Response) => {
     // hash the password before storing it in db
     const hashPassword = await bcrypt.hash(parseBody.password, 10);
     const user = await prisma.user.create({
+      //@ts-ignore
       data: {
         name: parseBody.name,
         email: parseBody.email,
@@ -83,6 +84,7 @@ app.post("/google-login", async (req: Request, res: Response) => {
 
     if (!user) {
       user = await prisma.user.create({
+        //@ts-ignore
         data: {
           name: parseBody.name,
           email: parseBody.email,
@@ -97,6 +99,10 @@ app.post("/google-login", async (req: Request, res: Response) => {
       { email: user.email, userId: user.id },
       JWT_SECRET as string,
     );
+
+
+
+
 
     
     res.status(200).json({
@@ -186,6 +192,7 @@ app.post("/signin", async (req: Request, res: Response) => {
 });
 app.post("/room", Auth, async (req: Request, res: Response) => {
   try {
+
     const parseBody = roomTypes.parse(req.body);
     const userId = req.userId;
 
@@ -197,13 +204,16 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
       return;
     }
 
+    console.log("control reach here");
     // if room is not exist then creating a new room
     const room = await prisma.room.create({
+      //@ts-ignore
       data: {
         slug: parseBody.roomName,
         adminId: userId,
       },
     });
+    console.log("room created ", room);
 
     res.status(200).json({
       message: "Room Created Succesfully ! ",
@@ -213,6 +223,7 @@ app.post("/room", Auth, async (req: Request, res: Response) => {
 
     return;
   } catch (e: any) {
+    console.log(e)
     if (e instanceof ZodError) {
       res.status(400).json({
         message: "Input Validation",

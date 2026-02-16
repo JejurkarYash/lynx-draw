@@ -2,11 +2,23 @@
 import Image from 'next/image'
 import React, { useRef } from 'react'
 import { motion, useInView } from "motion/react";
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 const Benefits = () => {
+    const {data: session , status} = useSession();
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, margin: "-100px" });
+    const router = useRouter();
 
+
+    const handleGetStarted = () => {
+        if (status === "authenticated") {
+            router.push('/dashboard');
+        } else {
+            router.push('/api/auth/signin');
+        }
+    }
     return (
         <section ref={ref} className=' flex flex-row items-center justify-center gap-6  min-h-screen px-4 '>
             {/* container */}
@@ -44,6 +56,7 @@ const Benefits = () => {
                         transition={{ duration: 0.6, delay: 0.8 }}
                         whileHover={{ scale: 1.05, y: -2 }}
                         whileTap={{ scale: 0.95 }}
+                        onClick={handleGetStarted}
                         className=' bg-gradient-to-r  from-accent  via-blue-400 to-fuchsia-500 text-white p-2   cursor-pointer rounded-md  w-32 hover:shadow-md hover:scale-105 transition-all duration-300  '>
                         Get Started
                     </motion.button>

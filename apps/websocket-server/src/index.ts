@@ -45,6 +45,7 @@ interface message {
 const checkUser = (token: string): string | null => {
 
     try {
+
         const decode = jwt.verify(token, JWT_SECRET as string)
         if (typeof decode == 'string') {
             return null
@@ -57,6 +58,7 @@ const checkUser = (token: string): string | null => {
         return decode.userId;
     }
     catch (e) {
+        console.log("error while verifying token ", e);
         return null;
     }
 
@@ -103,6 +105,7 @@ wss.on("connection", async (ws, req) => {
         }
         const queryParams = new URLSearchParams(url.split("?")[1]);
         const token = queryParams.get("token");
+        
 
         if (!token) return;
         const userId = checkUser(token)

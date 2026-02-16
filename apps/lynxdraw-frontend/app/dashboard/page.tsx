@@ -68,6 +68,7 @@ export default function DashboardPage() {
 
         } catch (e: any) {
             setIsCreating(false);
+            console.log(e); 
             setError(e.response?.data?.message || "An error occurred while creating the room.");
             toast.error(e.response?.data?.message)
         }
