@@ -5,15 +5,26 @@ import WebSocket from 'ws';
 import { Redis } from 'ioredis';
 import myQueue from './queue.js';
 import { getGeneralRedis } from "./RedisManager.js"
+import http from 'http';
 
 // initialzing redis connection
 const redis = getGeneralRedis();
+
+// creating a http server for pinging purpose
+const server = http.createServer((req, res) => {
+     if(req.url === "/health"){
+        res.statusCode = 200;
+     }
+});
 
 
 
 // Initializing a websocket server          
 const PORT = Number(process.env.PORT);
-const wss = new WebSocketServer({ port: PORT })
+const wss = new WebSocketServer({server})
+server.listen(PORT, () => {
+    console.log(`websocket server is listening on port ${PORT}`);
+})
 
 wss.on("listening", () => console.log("Websocket server is listening on port: ", PORT))
 wss.on("error", (e) => {
