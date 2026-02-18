@@ -17,7 +17,7 @@ const Hero = () => {
         if (status === "authenticated") {
             router.push('/dashboard');
         } else {
-            router.push('/api/auth/signin');
+            router.push('/api/auth/signup');
         }
     }
 
