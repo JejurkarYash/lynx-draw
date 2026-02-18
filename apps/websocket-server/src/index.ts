@@ -13,7 +13,8 @@ const redis = getGeneralRedis();
 // creating a http server for pinging purpose
 const server = http.createServer((req, res) => {
      if(req.url === "/health"){
-        res.statusCode = 200;
+        res.writeHead(200, {"Content-Type": "application/json"});
+        res.end(JSON.stringify({status: "ok" , service:"websocket-server"}));
      }
 });
 
